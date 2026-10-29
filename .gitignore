@@ -1,0 +1,8 @@
+node_modules/
+.env
+agent/data/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+.DS_Store
+agent/e2e-data/
