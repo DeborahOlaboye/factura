@@ -169,5 +169,5 @@ async function swap(textile: Textile, sell: Symbol, buy: Symbol, amount: bigint,
 }
 
 function fmt(v: bigint, decimals: number) {
-  return (Number(v) / 10 ** decimals).toFixed(2);
+  return (Number(v) / 10 ** decimals).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: decimals });
 }

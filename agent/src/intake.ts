@@ -15,8 +15,8 @@ export const draftSchema = z.object({
   clientEmail: z.string().email().optional(),
   linkedinUrl: z.string().url().optional(),
   xHandle: z.string().optional(),
-  // Invoices are billed in whole cents of USA₮.
-  amountUsd: z.number().min(0.01, "amount must be at least $0.01").max(1_000_000, "amount must be at most $1,000,000"),
+  // USA₮ has 6 decimals, so the smallest invoice is one atomic unit: $0.000001.
+  amountUsd: z.number().min(0.000001, "amount must be at least $0.000001").max(1_000_000, "amount must be at most $1,000,000"),
   description: z.string().min(1),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });

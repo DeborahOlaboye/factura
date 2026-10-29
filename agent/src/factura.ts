@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { isAddress, keccak256, parseUnits, toBytes, type Address, type Hex } from "viem";
+import { formatUnits, isAddress, keccak256, parseUnits, toBytes, type Address, type Hex } from "viem";
 import { BudgetExceeded } from "./buy.ts";
 import type { InvoiceDraft } from "./intake.ts";
 import { invoiceId, type Ledger } from "./ledger.ts";
@@ -76,7 +76,9 @@ export class Factura {
     const f = this.requireFreelancer(freelancerId);
     const number = this.d.store.nextInvoiceNumber();
     const id = invoiceId(number, this.d.salt).toLowerCase() as Hex;
-    const amount = parseUnits(draft.amountUsd.toFixed(2), INVOICE_ASSET.decimals);
+    // Full USA₮ precision (6 decimals); toFixed avoids exponent notation for tiny amounts.
+    const amount = parseUnits(draft.amountUsd.toFixed(INVOICE_ASSET.decimals), INVOICE_ASSET.decimals);
+    if (amount <= 0n) throw new FacturaError("amount must be at least $0.000001");
     const dueAt = new Date(`${draft.dueDate}T23:59:59Z`);
 
     const document = {
@@ -84,7 +86,7 @@ export class Factura {
       issuer: { name: f.name, wallet: f.wallet, country: f.country },
       client: { name: draft.clientName, company: draft.company, email: draft.clientEmail },
       description: draft.description,
-      amount: { value: draft.amountUsd.toFixed(2), currency: "USD", settlementAsset: "USA₮ on Celo" },
+      amount: { value: formatUnits(amount, INVOICE_ASSET.decimals), currency: "USD", settlementAsset: "USA₮ on Celo" },
       dueDate: draft.dueDate,
     };
     const metaHash = keccak256(toBytes(JSON.stringify(document)));
@@ -223,7 +225,7 @@ export class Factura {
                 freelancer: f.name,
                 client: inv.client.name,
                 invoice: inv.number,
-                amountUsd: (Number(inv.amount) / 1e6).toFixed(2),
+                amountUsd: formatUnits(BigInt(inv.amount), INVOICE_ASSET.decimals),
                 dueDate: inv.dueAt.slice(0, 10),
                 payLink: this.payLink(inv),
               }),

@@ -23,8 +23,11 @@ export default function NewInvoice() {
   const issue = useIssueInvoice();
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const tooSmall = draft.amountUsd > 0 && draft.amountUsd < 0.01;
-  const valid = draft.clientName.trim() && draft.description.trim() && draft.amountUsd >= 0.01 && draft.dueDate >= new Date().toISOString().slice(0, 10);
+  // USA₮ carries 6 decimals: anything that rounds to at least $0.000001 can be invoiced.
+  const atomic = Math.round(draft.amountUsd * 1e6);
+  const tooSmall = draft.amountUsd > 0 && atomic < 1;
+  const tooPrecise = draft.amountUsd > 0 && Math.abs(draft.amountUsd * 1e6 - atomic) > 1e-6;
+  const valid = draft.clientName.trim() && draft.description.trim() && atomic >= 1 && draft.dueDate >= new Date().toISOString().slice(0, 10);
 
   const preview = useMemo(
     () => ({
@@ -97,7 +100,11 @@ export default function NewInvoice() {
               <Field label="Company">
                 <Input value={draft.company ?? ""} onChange={(e) => set("company", e.target.value)} placeholder="Northwind Labs, Inc." />
               </Field>
-              <Field label="Amount (USD)" error={tooSmall ? "The smallest invoice is $0.01: USA₮ is billed in cents." : undefined}>
+              <Field
+                label="Amount (USD)"
+                error={tooSmall ? "The smallest invoice is $0.000001, one unit of USA₮." : undefined}
+                hint={tooPrecise ? "USA₮ has 6 decimals, so this is rounded to the nearest $0.000001." : undefined}
+              >
                 <Input
                   required
                   inputMode="decimal"
@@ -187,7 +194,7 @@ function Issued({ inv, onAnother }: { inv: Invoice; onAnother: () => void }) {
 }
 
 function clean(d: Draft): Draft {
-  const out: Draft = { clientName: d.clientName.trim(), amountUsd: Math.round(d.amountUsd * 100) / 100, description: d.description.trim(), dueDate: d.dueDate };
+  const out: Draft = { clientName: d.clientName.trim(), amountUsd: Math.round(d.amountUsd * 1e6) / 1e6, description: d.description.trim(), dueDate: d.dueDate };
   if (d.company?.trim()) out.company = d.company.trim();
   if (d.clientEmail?.trim()) out.clientEmail = d.clientEmail.trim();
   if (d.linkedinUrl?.trim()) out.linkedinUrl = d.linkedinUrl.trim();

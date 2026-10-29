@@ -2,7 +2,7 @@ import { HTTPFacilitatorClient, x402ResourceServer, type RoutesConfig } from "@x
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { paymentMiddleware } from "@x402/express";
 import type { RequestHandler } from "express";
-import type { Address, Hex } from "viem";
+import { formatUnits, type Address, type Hex } from "viem";
 import type { Config } from "./config.ts";
 import type { Factura, Log } from "./factura.ts";
 import type { Store } from "./store.ts";
@@ -117,7 +117,7 @@ export function publicInvoice(inv: ReturnType<Store["invoice"]> & {}, store: Sto
     from: f?.name,
     to: inv.client.company ?? inv.client.name,
     description: inv.description,
-    amount: (Number(inv.amount) / 10 ** INVOICE_ASSET.decimals).toFixed(2),
+    amount: formatUnits(BigInt(inv.amount), INVOICE_ASSET.decimals),
     currency: "USD",
     settlementAsset: { symbol: "USA₮", address: INVOICE_ASSET.address, chainId: 42220 },
     dueDate: inv.dueAt.slice(0, 10),
