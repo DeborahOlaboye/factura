@@ -132,6 +132,10 @@ export class Store {
     return this.data.freelancers[id];
   }
 
+  freelancerByWallet(wallet: string): Freelancer | undefined {
+    return Object.values(this.data.freelancers).find((f) => f.wallet.toLowerCase() === wallet.toLowerCase());
+  }
+
   freelancers(): Freelancer[] {
     return Object.values(this.data.freelancers);
   }

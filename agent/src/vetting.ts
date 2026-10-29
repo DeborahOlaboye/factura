@@ -72,7 +72,8 @@ export async function vetClient(client: ClientInfo, services: Services, invoiceI
       summary = parsed?.summary ?? brief.slice(0, 400);
     } catch (err) {
       verdict = "review";
-      summary = `Automatic brief unavailable (${String(err).slice(0, 120)}); lookups attached.`;
+      summary = "The automatic check couldn’t finish just now. Look the client up yourself before starting work, or run the check again.";
+      signals.briefError = String(err).slice(0, 200);
     }
   }
 

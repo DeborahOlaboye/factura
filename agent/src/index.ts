@@ -1,4 +1,5 @@
 import { buildApp } from "./api.ts";
+import { Auth } from "./auth.ts";
 import { Buy } from "./buy.ts";
 import { makeClients } from "./chain.ts";
 import { loadConfig } from "./config.ts";
@@ -33,12 +34,16 @@ const factura = new Factura({
   ledger,
   agentAddress: clients.account.address,
   publicUrl: cfg.PUBLIC_URL,
+  frontendUrl: cfg.FRONTEND_URL,
   salt: `${clients.chain.id}:${cfg.LEDGER_ADDRESS ?? "none"}`,
   maxDeviationBps: cfg.MAX_FX_DEVIATION_BPS,
   log,
 });
 
-const app = buildApp({ cfg, store, factura, services, chainId: clients.chain.id, log });
+const auth = new Auth(clients, cfg.SESSION_SECRET, new URL(cfg.FRONTEND_URL).host);
+if (!cfg.SESSION_SECRET) log("SESSION_SECRET not set: freelancer sessions end when the agent restarts");
+
+const app = buildApp({ cfg, store, factura, services, auth, chainId: clients.chain.id, log });
 app.listen(cfg.PORT, () => {
   log("factura agent listening", { port: cfg.PORT, agent: clients.account.address, chain: clients.chain.name });
 });

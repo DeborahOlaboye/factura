@@ -6,6 +6,10 @@ const address = hex(40);
 const schema = z.object({
   PORT: z.coerce.number().default(8402),
   PUBLIC_URL: z.string().url().default("http://localhost:8402"),
+  // Where people open pay links and sign in. Its host is the SIWE domain.
+  FRONTEND_URL: z.string().url().default("http://localhost:3000"),
+  // HMAC key for freelancer sessions. Without it sessions don't survive a restart.
+  SESSION_SECRET: z.string().min(32).optional(),
   DATA_DIR: z.string().default("./data"),
 
   // Celo
@@ -40,7 +44,9 @@ const schema = z.object({
 export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = schema.safeParse(env);
+  // `KEY=` in a .env file means "not set", not an empty value to validate.
+  const present = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== undefined && v.trim() !== ""));
+  const parsed = schema.safeParse(present);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid configuration:\n${issues}`);

@@ -19,6 +19,7 @@ interface Deps {
   ledger?: Ledger;
   agentAddress: Address;
   publicUrl: string;
+  frontendUrl: string;
   salt: string;
   maxDeviationBps: number;
   log: Log;
@@ -46,6 +47,7 @@ export class Factura {
     allocations?: Allocation[];
   }): Freelancer {
     if (!isAddress(input.wallet)) throw new FacturaError("wallet is not a valid address");
+    if (this.d.store.freelancerByWallet(input.wallet)) throw new FacturaError("this wallet already has a Factura profile", 409);
     const allocations = input.allocations ?? defaultAllocations(input.country);
     const problem = validateAllocations(allocations);
     if (problem) throw new FacturaError(problem);
@@ -140,7 +142,13 @@ export class Factura {
     this.d.store.updateInvoice(id, (i) => (i.status = "cancelled"));
   }
 
+  /** The link a client opens in a browser. */
   payLink(inv: Invoice) {
+    return `${this.d.frontendUrl}/pay/${inv.id}`;
+  }
+
+  /** The raw x402 resource, for agents and `buy curl`. */
+  x402Url(inv: Invoice) {
     return `${this.d.publicUrl}/pay/${inv.id}`;
   }
 

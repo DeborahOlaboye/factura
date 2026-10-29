@@ -73,6 +73,7 @@ const factura = new Factura({
   ledger: new Ledger(clients, ledgerAddress),
   agentAddress: account.address,
   publicUrl: "http://localhost",
+  frontendUrl: "http://localhost:3000",
   salt: "e2e",
   maxDeviationBps: 150,
   log: (m, d) => console.log("  agent:", m, JSON.stringify(d ?? {})),

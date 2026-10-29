@@ -10,7 +10,7 @@
 import { loadConfig } from "../src/config.ts";
 
 const cfg = loadConfig();
-const base = `http://localhost:${cfg.PORT}/api`;
+const base = `http://localhost:${cfg.PORT}/api/admin`;
 
 async function call(method: string, path: string, body?: unknown) {
   const res = await fetch(`${base}${path}`, {
