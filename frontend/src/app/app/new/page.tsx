@@ -59,7 +59,6 @@ export default function NewInvoice() {
                 rows={3}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Bill Northwind Labs $4,800 for October API work and on-call, due Nov 15. Their LinkedIn is linkedin.com/company/northwind"
               />
             </Field>
             {drafter.error && (
@@ -95,10 +94,10 @@ export default function NewInvoice() {
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Client contact name">
-                <Input required value={draft.clientName} onChange={(e) => set("clientName", e.target.value)} placeholder="Jordan Lee" />
+                <Input required value={draft.clientName} onChange={(e) => set("clientName", e.target.value)} />
               </Field>
               <Field label="Company">
-                <Input value={draft.company ?? ""} onChange={(e) => set("company", e.target.value)} placeholder="Northwind Labs, Inc." />
+                <Input value={draft.company ?? ""} onChange={(e) => set("company", e.target.value)} />
               </Field>
               <Field
                 label="Amount (USD)"
@@ -114,7 +113,6 @@ export default function NewInvoice() {
                     setAmountText(v);
                     set("amountUsd", Number(v) || 0);
                   }}
-                  placeholder="4800"
                   className="figures"
                 />
               </Field>
@@ -123,7 +121,7 @@ export default function NewInvoice() {
               </Field>
               <div className="sm:col-span-2">
                 <Field label="What it’s for">
-                  <Textarea required rows={2} value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="October: payments API, webhook retries and on-call cover" />
+                  <Textarea required rows={2} value={draft.description} onChange={(e) => set("description", e.target.value)} />
                 </Field>
               </div>
             </div>
@@ -137,11 +135,11 @@ export default function NewInvoice() {
                   <Input type="email" value={draft.clientEmail ?? ""} onChange={(e) => set("clientEmail", e.target.value)} />
                 </Field>
                 <Field label="X handle">
-                  <Input value={draft.xHandle ?? ""} onChange={(e) => set("xHandle", e.target.value)} placeholder="@northwind" />
+                  <Input value={draft.xHandle ?? ""} onChange={(e) => set("xHandle", e.target.value)} />
                 </Field>
                 <div className="sm:col-span-2">
                   <Field label="Company LinkedIn URL" hint="Used for the footprint check alongside the OFAC screen.">
-                    <Input type="url" value={draft.linkedinUrl ?? ""} onChange={(e) => set("linkedinUrl", e.target.value)} placeholder="https://www.linkedin.com/company/…" />
+                    <Input type="url" value={draft.linkedinUrl ?? ""} onChange={(e) => set("linkedinUrl", e.target.value)} />
                   </Field>
                 </div>
               </div>

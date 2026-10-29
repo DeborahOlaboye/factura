@@ -149,11 +149,11 @@ function Onboarding() {
         <section className="grid gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Field label="Name on your invoices" hint="Your name or your studio’s.">
-              <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ana Souza" maxLength={80} />
+              <Input required value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
             </Field>
           </div>
           <Field label="Email (optional)" hint="Shown to clients on the invoice.">
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ana@studio.dev" />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Where you live">
             <Select
