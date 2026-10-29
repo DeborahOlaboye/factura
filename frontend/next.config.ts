@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
+// The agent (Express) runs separately. The browser talks to it through /backend, so
+// pay links, sign-in and x402 payment headers stay same-origin with no CORS setup.
+const AGENT_URL = process.env.FACTURA_AGENT_URL ?? "http://localhost:8402";
+
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -11,6 +14,9 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async rewrites() {
+    return [{ source: "/backend/:path*", destination: `${AGENT_URL}/:path*` }];
   },
 };
 
