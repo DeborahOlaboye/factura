@@ -37,7 +37,9 @@ The client is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by 
 ```
 contracts/   Foundry. FacturaLedger: invoices, x402 settlements, conversions, payouts.
 agent/       TypeScript (Node 22). Express server, x402 resource server, buy client,
-             Textile RFQ client, treasury, vetting, ERC-8004 registration.
+             Textile RFQ client, treasury, vetting, SIWE sessions, ERC-8004 registration.
+frontend/    Next.js 16 + wagmi. Landing page, client pay page (x402 in the browser),
+             freelancer dashboard. Talks to the agent through a /backend rewrite.
 ```
 
 | Piece | What it uses |
@@ -79,7 +81,14 @@ npm run deploy:ledger           # deploys FacturaLedger (tagged), sets the agent
 npm run register:agent          # ERC-8004 identity from the agent wallet
 npm run buy:import              # same wallet as the buy payer
 npm start
+
+# frontend
+cd ../frontend && npm install
+cp .env.example .env.local      # FACTURA_AGENT_URL=http://localhost:8402
+npm run dev                     # http://localhost:3000
 ```
+
+Freelancers sign in with their wallet (Sign-In with Ethereum, EIP-4361). The wallet that signs in is the wallet invoices pay out to. Clients need nothing but the pay link and a wallet holding USA₮ on Celo.
 
 Tests:
 
@@ -95,7 +104,7 @@ The local run deploys the ledger and issues an invoice. It then feeds the settle
 - the invoice is marked paid onchain with the right payer and settlement tx;
 - the ERC-8021 tag is on the agent's transactions.
 
-Operator CLI until the frontend exists:
+Operator CLI (talks to `/api/admin`):
 
 ```sh
 npm run invoice -- freelancer "Ana Souza" BR 0xHerWallet
@@ -111,21 +120,23 @@ npx @celo/buy curl --token USAT --max-amount 1200 https://<host>/pay/<invoiceId>
 
 ## REST API
 
-All `/api/*` routes need `Authorization: Bearer $API_TOKEN`.
+| Method | Path | Auth | |
+|---|---|---|---|
+| GET | `/auth/nonce` | — | SIWE nonce |
+| POST | `/auth/verify` | — | `{ message, signature }` → session token |
+| GET / POST | `/api/me` | session | the signed-in freelancer / create the profile |
+| PUT | `/api/me/payout-rules` | session | change mode and split |
+| POST | `/api/me/invoices/draft` | session | `{ text }` → structured draft (paid LLM call) |
+| GET / POST | `/api/me/invoices` | session | list / issue (returns `payLink` and `x402Url`) |
+| GET | `/api/me/invoices/:id` | session | one invoice with timeline data |
+| POST | `/api/me/invoices/:id/cancel` | session | cancel an open invoice |
+| POST | `/api/me/invoices/:id/vet` | session | re-run client vetting |
+| * | `/api/admin/*` | `API_TOKEN` | operator routes (freelancers, invoices, `paid-calls`) |
+| GET | `/pay/:id` | — | x402 pay link; a browser is redirected to the frontend pay page |
+| GET | `/invoices/:id` | — | public invoice view |
+| GET | `/agent.json` | — | ERC-8004 registration file |
 
-| Method | Path | |
-|---|---|---|
-| POST | `/api/freelancers` | register (`name`, `country`, `wallet`, optional `payoutMode`, `allocations`) |
-| PUT | `/api/freelancers/:id/payout-rules` | change mode and split |
-| POST | `/api/invoices/draft` | `{ text }` → structured draft (paid LLM call) |
-| POST | `/api/invoices` | `{ freelancerId, draft }` → invoice + pay link |
-| GET | `/api/invoices[?freelancerId=]` | list |
-| POST | `/api/invoices/:id/cancel` | cancel an open invoice |
-| POST | `/api/invoices/:id/vet` | re-run client vetting |
-| GET | `/api/paid-calls` | proof of payment for buy calls |
-| GET | `/pay/:id` | public x402 pay link |
-| GET | `/invoices/:id` | public invoice view |
-| GET | `/agent.json` | ERC-8004 registration file |
+Session tokens are HMAC-signed with `SESSION_SECRET` and last 7 days. `GET /api/admin/paid-calls` lists every buy call with its settlement tx.
 
 ## Notes and limits
 
