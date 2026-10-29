@@ -1,0 +1,35 @@
+# Render blueprint for the Factura agent (the frontend is on Vercel).
+# New → Blueprint → pick this repo. Secrets marked sync: false are asked for on first deploy.
+services:
+  - type: web
+    name: factura-agent
+    runtime: docker
+    plan: free
+    rootDir: agent
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: CHAIN
+        value: celo
+      - key: FRONTEND_URL
+        value: https://factura-teal.vercel.app
+      - key: DATABASE_URL # free Postgres, e.g. Neon (render's free tier has no disk)
+        sync: false
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+      - key: ATTRIBUTION_CODE
+        sync: false
+      - key: X402_API_KEY
+        sync: false
+      - key: LEDGER_ADDRESS
+        sync: false
+      - key: AGENT_ID
+        sync: false
+      - key: API_TOKEN
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: BUY_DAILY_BUDGET_USD
+        value: "2"

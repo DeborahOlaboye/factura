@@ -14,12 +14,9 @@ const log = (msg: string, extra?: Record<string, unknown>) =>
   console.log(JSON.stringify({ at: new Date().toISOString(), msg, ...extra }));
 
 const clients = makeClients(cfg);
-const store = new Store(cfg.DATA_DIR);
-const buy = new Buy(store, {
-  account: cfg.BUY_ACCOUNT,
-  dailyBudgetUsd: cfg.BUY_DAILY_BUDGET_USD,
-  sandbox: cfg.CHAIN !== "celo",
-});
+const store = await Store.open({ dataDir: cfg.DATA_DIR, databaseUrl: cfg.DATABASE_URL });
+log("store ready", { backend: cfg.DATABASE_URL ? "postgres" : "file" });
+const buy = new Buy(store, { signer: clients.account, dailyBudgetUsd: cfg.BUY_DAILY_BUDGET_USD });
 const services = new Services(buy);
 const textile = new Textile(clients, cfg.TEXTILE_API_URL, cfg.TEXTILE_API_KEY);
 const ledger = cfg.LEDGER_ADDRESS ? new Ledger(clients, cfg.LEDGER_ADDRESS as `0x${string}`) : undefined;
@@ -44,9 +41,18 @@ const auth = new Auth(clients, cfg.SESSION_SECRET, new URL(cfg.FRONTEND_URL).hos
 if (!cfg.SESSION_SECRET) log("SESSION_SECRET not set: freelancer sessions end when the agent restarts");
 
 const app = buildApp({ cfg, store, factura, services, auth, chainId: clients.chain.id, log });
-app.listen(cfg.PORT, () => {
+const server = app.listen(cfg.PORT, () => {
   log("factura agent listening", { port: cfg.PORT, agent: clients.account.address, chain: clients.chain.name });
 });
 
 // Overdue reminders, hourly.
 setInterval(() => void factura.draftReminders(), 60 * 60 * 1000).unref();
+
+// Hosts send SIGTERM before replacing the instance: finish the last store write first.
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, () => {
+    log("shutting down", { signal });
+    server.close();
+    store.flush().finally(() => process.exit(0));
+  });
+}

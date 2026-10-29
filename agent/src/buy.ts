@@ -1,27 +1,29 @@
-import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
+import { ExactEvmSchemeV1 } from "@x402/evm/exact/v1/client";
+import { decodePaymentResponseHeader, wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import type { LocalAccount } from "viem";
 import type { Store } from "./store.ts";
 
 /**
- * Paid calls into services Factura doesn't own, through the buy marketplace on Celo.
+ * Paid calls into services Factura doesn't own, through the buy marketplace on Celo
+ * (gateway.usebuy.ai) and Agent402.
  *
- * We drive the official `buy` CLI rather than re-implementing x402 signing: it pays
- * the 402 from the agent's keychain wallet, enforces `--max-amount` before signing,
- * keeps buy's own receipt store (`buy receipts`) and reports the settlement tx. Each
- * call is also written to Factura's store so the agent can show what it bought, why,
- * and for which invoice.
+ * The agent pays the 402 challenges itself with an x402 client signing from the agent
+ * wallet: the same wallet that holds the ERC-8004 identity. buy's gateway speaks x402 v1
+ * (network "celo"), Agent402 speaks v2 (eip155:42220); both settle EIP-3009 transfers on
+ * Celo, so the payer needs USDC but no CELO. We don't drive the `buy` CLI here because
+ * its keystore needs an OS keychain on mainnet, which servers and containers don't have.
+ *
+ * Every call has a hard price cap (refused before signing if the quote is higher), the
+ * agent has a daily budget, and every payment is logged with its settlement tx.
  */
-
-const require = createRequire(import.meta.url);
-const BUY_MAIN = join(dirname(require.resolve("@celo/buy/package.json")), "dist/main.js");
 
 export interface BuyRequest {
   service: string;
   url: string;
   method?: "GET" | "POST";
   body?: unknown;
-  /** Hard cap in USD for this call; buy refuses to sign above it. */
+  /** Hard cap in USD for this call; the client refuses to sign above it. */
   maxUsd: number;
   purpose: string;
   invoiceId?: string;
@@ -38,9 +40,8 @@ export interface BuyResult<T = unknown> {
 export class BudgetExceeded extends Error {}
 
 export interface BuyOptions {
-  account?: string;
+  signer: LocalAccount;
   dailyBudgetUsd: number;
-  sandbox?: boolean;
 }
 
 export class Buy {
@@ -48,6 +49,14 @@ export class Buy {
     private readonly store: Store,
     private readonly opts: BuyOptions,
   ) {}
+
+  private payingFetch(maxUsd: number) {
+    const client = new x402Client()
+      .register("eip155:42220", new ExactEvmScheme(this.opts.signer))
+      .registerV1("celo", new ExactEvmSchemeV1(this.opts.signer))
+      .setSpendControls({ maxAmountPerPayment: `$${maxUsd}` });
+    return wrapFetchWithPayment(fetch, client);
+  }
 
   async call<T = unknown>(req: BuyRequest): Promise<BuyResult<T>> {
     const spent = this.store.spentTodayUsd();
@@ -57,23 +66,24 @@ export class Buy {
       );
     }
 
-    const globals = ["--verbose", "--json"];
-    if (this.opts.sandbox) globals.push("--sandbox");
-    if (this.opts.account) globals.push("--account", this.opts.account);
-
-    const method = req.method ?? "POST";
-    const curlArgs = ["--max-amount", String(req.maxUsd), "-sS", "-X", method];
-    if (req.body !== undefined) {
-      curlArgs.push("-H", "content-type: application/json", "--data", JSON.stringify(req.body));
+    let res: Response;
+    try {
+      res = await this.payingFetch(req.maxUsd)(req.url, {
+        method: req.method ?? "POST",
+        headers: { accept: "application/json", ...(req.body !== undefined ? { "content-type": "application/json" } : {}) },
+        body: req.body !== undefined ? JSON.stringify(req.body) : undefined,
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch (err) {
+      // Refused before signing (over the cap, no matching scheme) or a network failure.
+      return { ok: false, raw: "", error: err instanceof Error ? err.message : String(err) };
     }
-    curlArgs.push(req.url);
 
-    const { code, stdout, stderr } = await run(process.execPath, [BUY_MAIN, ...globals, "curl", ...curlArgs]);
-    const settlementTx = parseSettlementTx(stderr);
+    const settlementTx = settlementFrom(res.headers);
+    const raw = await res.text();
 
-    // Record anything that may have been paid for, even when the request then failed:
-    // a settled payment with a bad response is still money spent.
-    if (settlementTx || code === 0) {
+    // A settled payment with a failed response is still money spent: log it either way.
+    if (settlementTx || res.ok) {
       this.store.addPaidCall({
         at: new Date().toISOString(),
         service: req.service,
@@ -85,58 +95,24 @@ export class Buy {
       });
     }
 
-    if (code !== 0) {
-      return { ok: false, raw: stdout, settlementTx, error: parseError(stderr) ?? `buy exited ${code}` };
-    }
-
     let data: T | undefined;
     try {
-      data = JSON.parse(stdout) as T;
+      data = JSON.parse(raw) as T;
     } catch {
-      // Non-JSON bodies are returned raw.
+      // non-JSON body: returned raw
     }
-    return { ok: true, data, raw: stdout, settlementTx };
+    if (!res.ok) return { ok: false, data, raw, settlementTx, error: `HTTP ${res.status}${raw ? `: ${raw.slice(0, 160)}` : ""}` };
+    return { ok: true, data, raw, settlementTx };
   }
 }
 
-function run(cmd: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (d) => (stdout += d));
-    child.stderr.on("data", (d) => (stderr += d));
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
-  });
-}
-
-/** buy logs one JSON object per stderr line when not on a TTY: {"log":"paid → 0x…"}. */
-export function parseSettlementTx(stderr: string): string | undefined {
-  for (const line of stderr.split("\n")) {
-    const text = jsonField(line, "log") ?? line;
-    const m = /paid →.*?(0x[0-9a-fA-F]{64})/.exec(text);
-    if (m) return m[1];
-  }
-  return undefined;
-}
-
-export function parseError(stderr: string): string | undefined {
-  for (const line of stderr.split("\n")) {
-    try {
-      const obj = JSON.parse(line) as { error?: { code?: string; message?: string } };
-      if (obj.error) return [obj.error.code, obj.error.message].filter(Boolean).join(": ");
-    } catch {
-      // not a JSON line
-    }
-  }
-  return undefined;
-}
-
-function jsonField(line: string, key: string): string | undefined {
+/** Settlement tx from the x402 receipt header (v2 `PAYMENT-RESPONSE`, v1 `X-PAYMENT-RESPONSE`). */
+export function settlementFrom(headers: Headers): string | undefined {
+  const header = headers.get("PAYMENT-RESPONSE") ?? headers.get("X-PAYMENT-RESPONSE");
+  if (!header) return undefined;
   try {
-    const obj = JSON.parse(line) as Record<string, unknown>;
-    return typeof obj[key] === "string" ? (obj[key] as string) : undefined;
+    const receipt = decodePaymentResponseHeader(header) as { success?: boolean; transaction?: string };
+    return receipt.success !== false && receipt.transaction ? receipt.transaction : undefined;
   } catch {
     return undefined;
   }

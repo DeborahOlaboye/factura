@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import pg from "pg";
 import type { Symbol } from "./tokens.ts";
 
 export interface Allocation {
@@ -95,26 +96,109 @@ interface Data {
 
 const EMPTY: Data = { seq: 0, freelancers: {}, invoices: {}, paidCalls: [] };
 
-/**
- * A single JSON file, rewritten atomically on every change. The agent runs as one
- * process and the volumes are small, so this keeps the deployment to "copy the folder".
- */
-export class Store {
-  private data: Data;
+/** Where the store's snapshot lives between restarts. */
+interface Persistence {
+  load(): Promise<Partial<Data> | undefined>;
+  save(snapshot: string): void;
+  flush(): Promise<void>;
+}
+
+/** A JSON file, rewritten atomically on every change. For hosts with a persistent disk. */
+class FilePersistence implements Persistence {
   private readonly file: string;
 
   constructor(dir: string) {
     mkdirSync(dir, { recursive: true });
     this.file = join(dir, "factura.json");
-    this.data = existsSync(this.file)
-      ? { ...EMPTY, ...JSON.parse(readFileSync(this.file, "utf8")) }
-      : structuredClone(EMPTY);
+  }
+
+  async load() {
+    return existsSync(this.file) ? (JSON.parse(readFileSync(this.file, "utf8")) as Partial<Data>) : undefined;
+  }
+
+  save(snapshot: string) {
+    const tmp = `${this.file}.tmp`;
+    writeFileSync(tmp, snapshot);
+    renameSync(tmp, this.file);
+  }
+
+  async flush() {}
+}
+
+/**
+ * One row in Postgres holding the same JSON snapshot. For hosts without a disk (Render's
+ * free tier wipes it on every restart). Writes are queued and coalesced: only the latest
+ * snapshot is ever written, and one write runs at a time.
+ */
+class PostgresPersistence implements Persistence {
+  private readonly pool: pg.Pool;
+  private pending: string | undefined;
+  private writing: Promise<void> = Promise.resolve();
+
+  constructor(url: string) {
+    this.pool = new pg.Pool({ connectionString: url, max: 2 });
+  }
+
+  async load() {
+    await this.pool.query(
+      "CREATE TABLE IF NOT EXISTS factura_state (id text PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())",
+    );
+    const res = await this.pool.query<{ data: Partial<Data> }>("SELECT data FROM factura_state WHERE id = 'main'");
+    return res.rows[0]?.data;
+  }
+
+  save(snapshot: string) {
+    this.pending = snapshot;
+    this.writing = this.writing.then(() => this.drain());
+  }
+
+  private async drain() {
+    const snapshot = this.pending;
+    if (snapshot === undefined) return;
+    this.pending = undefined;
+    try {
+      await this.pool.query(
+        "INSERT INTO factura_state (id, data) VALUES ('main', $1::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()",
+        [snapshot],
+      );
+    } catch (err) {
+      // Keep the newest snapshot for the next write instead of dropping it.
+      this.pending ??= snapshot;
+      console.error(JSON.stringify({ at: new Date().toISOString(), msg: "store write failed", error: String(err) }));
+    }
+  }
+
+  async flush() {
+    await this.writing;
+    if (this.pending !== undefined) await this.drain();
+    await this.pool.end();
+  }
+}
+
+/**
+ * The agent's state, held in memory and persisted on every change: to a JSON file by
+ * default, or to Postgres when DATABASE_URL is set. The agent runs as one process and the
+ * volumes are small, so a single snapshot is all the storage it needs.
+ */
+export class Store {
+  private constructor(
+    private data: Data,
+    private readonly persistence: Persistence,
+  ) {}
+
+  static async open(opts: { dataDir: string; databaseUrl?: string }): Promise<Store> {
+    const persistence = opts.databaseUrl ? new PostgresPersistence(opts.databaseUrl) : new FilePersistence(opts.dataDir);
+    const loaded = await persistence.load();
+    return new Store({ ...structuredClone(EMPTY), ...loaded }, persistence);
+  }
+
+  /** Wait for pending writes (call before the process exits). */
+  flush() {
+    return this.persistence.flush();
   }
 
   private save() {
-    const tmp = `${this.file}.tmp`;
-    writeFileSync(tmp, JSON.stringify(this.data, null, 2));
-    renameSync(tmp, this.file);
+    this.persistence.save(JSON.stringify(this.data));
   }
 
   nextInvoiceNumber(): string {

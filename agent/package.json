@@ -2,7 +2,7 @@
   "name": "factura-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Factura agent: cross-border invoicing for LatAm freelancers, settled in USA\u20ae over x402 on Celo",
+  "description": "Factura agent: cross-border invoicing for LatAm freelancers, settled in USA₮ over x402 on Celo",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -14,24 +14,25 @@
     "test": "vitest run",
     "deploy:ledger": "tsx --env-file-if-exists=.env scripts/deploy-ledger.ts",
     "register:agent": "tsx --env-file-if-exists=.env scripts/register-agent.ts",
-    "buy:import": "tsx --env-file-if-exists=.env scripts/buy-import.ts",
     "invoice": "tsx --env-file-if-exists=.env scripts/invoice.ts",
     "e2e": "tsx scripts/e2e-anvil.ts"
   },
   "dependencies": {
     "@celo/attribution-tags": "^0.5.0",
-    "@celo/buy": "^0.8.4",
     "@x402/core": "^2.28.0",
     "@x402/evm": "^2.28.0",
     "@x402/express": "^2.28.0",
+    "@x402/fetch": "^2.28.0",
     "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15",
     "viem": "^2.57.11",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.5",
-    "tsx": "^4.23.15",
+    "@types/pg": "^8.23.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }

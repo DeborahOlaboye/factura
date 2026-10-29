@@ -11,6 +11,8 @@ const schema = z.object({
   // HMAC key for freelancer sessions. Without it sessions don't survive a restart.
   SESSION_SECRET: z.string().min(32).optional(),
   DATA_DIR: z.string().default("./data"),
+  // Postgres instead of DATA_DIR, for hosts without a persistent disk (e.g. Render free + Neon).
+  DATABASE_URL: z.string().url().optional(),
 
   // Celo
   CHAIN: z.enum(["celo", "celo-sepolia"]).default("celo"),
@@ -33,8 +35,7 @@ const schema = z.object({
   // Reject a quote that is worse than the reference FX rate by more than this.
   MAX_FX_DEVIATION_BPS: z.coerce.number().default(150),
 
-  // buy: paid services the agent consumes
-  BUY_ACCOUNT: z.string().optional(),
+  // buy: paid services the agent consumes, paid in USDC from the agent wallet
   BUY_DAILY_BUDGET_USD: z.coerce.number().default(2),
 
   // Bearer token for the freelancer-facing REST API
@@ -45,7 +46,11 @@ export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // `KEY=` in a .env file means "not set", not an empty value to validate.
-  const present = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== undefined && v.trim() !== ""));
+  const present: Record<string, string> = Object.fromEntries(
+    Object.entries(env).filter((e): e is [string, string] => e[1] !== undefined && e[1].trim() !== ""),
+  );
+  // Render publishes the service's own URL; use it unless PUBLIC_URL says otherwise.
+  if (!present.PUBLIC_URL && present.RENDER_EXTERNAL_URL) present.PUBLIC_URL = present.RENDER_EXTERNAL_URL;
   const parsed = schema.safeParse(present);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");

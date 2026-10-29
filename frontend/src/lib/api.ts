@@ -45,6 +45,10 @@ export async function api<T>(path: string, init: RequestInit & { token?: string 
   if (init.token) headers.set("authorization", `Bearer ${init.token}`);
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
   const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+  // The host's own 404 (not the agent's) means /backend isn't wired to a running agent.
+  if (res.status === 404 && (body.error as { code?: string } | undefined)?.code === "NOT_FOUND") {
+    throw new ApiError("Factura’s agent isn’t connected to this site yet (FACTURA_AGENT_URL).", 404);
+  }
   if (!res.ok) {
     const reason = body.error !== undefined ? errorMessage(body.error) : res.status >= 500 ? "Factura’s agent isn’t reachable right now" : `Request failed (${res.status})`;
     throw new ApiError(reason, res.status);

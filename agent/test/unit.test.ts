@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseError, parseSettlementTx } from "../src/buy.ts";
+import { settlementFrom } from "../src/buy.ts";
 import { defaultAllocations } from "../src/factura.ts";
 import { shortfallBps } from "../src/fx.ts";
 import { invoiceId } from "../src/ledger.ts";
@@ -57,25 +57,21 @@ describe("validateAllocations", () => {
   });
 });
 
-describe("buy CLI output parsing", () => {
+describe("x402 receipts", () => {
   const tx = `0x${"ab".repeat(32)}`;
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64");
 
-  it("finds the settlement tx in JSON log lines", () => {
-    const stderr = [
-      JSON.stringify({ log: "quote → 0.01 USDC to 0x20fa…" }),
-      JSON.stringify({ log: "signed → EIP-3009" }),
-      JSON.stringify({ log: `paid → ${tx}` }),
-    ].join("\n");
-    expect(parseSettlementTx(stderr)).toBe(tx);
+  it("reads the settlement tx from a v1 receipt header", () => {
+    expect(settlementFrom(new Headers({ "X-PAYMENT-RESPONSE": b64({ success: true, transaction: tx, network: "celo" }) }))).toBe(tx);
   });
 
-  it("returns nothing when the proof is missing", () => {
-    expect(parseSettlementTx(JSON.stringify({ log: "paid → (no settlement proof in response, HTTP 500)" }))).toBeUndefined();
+  it("reads the settlement tx from a v2 receipt header", () => {
+    expect(settlementFrom(new Headers({ "PAYMENT-RESPONSE": b64({ success: true, transaction: tx, network: "eip155:42220" }) }))).toBe(tx);
   });
 
-  it("reads structured errors", () => {
-    const stderr = JSON.stringify({ error: { code: "insufficient_balance", message: "fund the wallet" } });
-    expect(parseError(stderr)).toBe("insufficient_balance: fund the wallet");
+  it("ignores failed or missing receipts", () => {
+    expect(settlementFrom(new Headers({ "PAYMENT-RESPONSE": b64({ success: false, transaction: tx }) }))).toBeUndefined();
+    expect(settlementFrom(new Headers())).toBeUndefined();
   });
 });
 

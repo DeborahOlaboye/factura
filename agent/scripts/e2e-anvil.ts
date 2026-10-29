@@ -64,8 +64,8 @@ const mockAt = (await publicClient.waitForTransactionReceipt({ hash: mockDep }))
 await test.setCode({ address: INVOICE_ASSET.address, bytecode: (await reader.getCode({ address: mockAt }))! });
 
 // 3. Domain flow
-const store = new Store(DATA);
-const services = new Services(new Buy(store, { dailyBudgetUsd: 0 }));
+const store = await Store.open({ dataDir: DATA });
+const services = new Services(new Buy(store, { signer: clients.account, dailyBudgetUsd: 0 }));
 const factura = new Factura({
   store,
   services,
