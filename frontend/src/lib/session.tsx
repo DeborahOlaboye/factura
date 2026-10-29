@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useConnection, useSignMessage } from "wagmi";
 import { createSiweMessage } from "viem/siwe";
 import { api, ApiError, loadSession, saveSession, type Session } from "./api";
+import { errorMessage, isRejection } from "./errors";
 import type { Freelancer } from "./types";
 import { useMounted } from "./useMounted";
 
@@ -50,7 +51,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         else if (e instanceof ApiError && e.status === 401) {
           saveSession(null);
           setStored(null);
-        } else setError(e.message);
+        } else setError(errorMessage(e));
       });
     return () => {
       cancelled = true;
@@ -82,8 +83,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setProfile({ wallet: s.wallet, value: res.freelancer });
       setStored(s);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Sign-in failed";
-      setError(/reject|denied/i.test(msg) ? "Signature request was declined." : msg.split("\n")[0]!);
+      // Keep the full error in the console; show one readable line.
+      console.error("sign-in failed", e);
+      setError(isRejection(e) ? "Signature request was declined." : errorMessage(e, "Sign-in failed"));
     } finally {
       setSigningIn(false);
     }

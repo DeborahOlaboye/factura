@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMounted } from "@/lib/useMounted";
 import { useConnect, useConnection, useConnectors, useDisconnect } from "wagmi";
+import { errorMessage } from "@/lib/errors";
 import { shortHex } from "@/lib/format";
 import { Button } from "./ui";
 
@@ -77,7 +78,7 @@ export function WalletButton({ size = "md", onDisconnect }: { size?: "sm" | "md"
           Get a wallet
         </a>
       )}
-      {error && <span className="text-xs text-danger">{error.message.split("\n")[0]}</span>}
+      {error && <span className="text-xs text-danger">{errorMessage(error)}</span>}
     </div>
   );
 }

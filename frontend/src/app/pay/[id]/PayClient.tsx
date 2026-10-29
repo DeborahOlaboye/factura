@@ -16,6 +16,7 @@ import { explorerTx, USAT } from "@/lib/chain";
 import { longDate, shortHex, usdNumber } from "@/lib/format";
 import type { PublicInvoice } from "@/lib/types";
 import { useMounted } from "@/lib/useMounted";
+import { errorMessage, isRejection } from "@/lib/errors";
 
 type Phase = { kind: "idle" } | { kind: "signing" } | { kind: "settling" } | { kind: "done"; tx?: string } | { kind: "error"; message: string };
 
@@ -114,16 +115,16 @@ function PayStub({
       const res = await payFetch(`/backend/pay/${id}`, { headers: { accept: "application/json" } });
       setPhase({ kind: "settling" });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-        throw new Error(body.message ?? body.error ?? `Payment was not accepted (HTTP ${res.status})`);
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error(errorMessage(body, `Payment was not accepted (HTTP ${res.status})`));
       }
       const header = res.headers.get("PAYMENT-RESPONSE") ?? res.headers.get("X-PAYMENT-RESPONSE");
       const receipt = header ? decodePaymentResponseHeader(header) : undefined;
       setPhase({ kind: "done", tx: receipt?.transaction });
       onPaid();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setPhase({ kind: "error", message: /reject|denied|cancel/i.test(msg) ? "You declined the signature. Nothing was paid." : msg.split("\n")[0]! });
+      console.error("payment failed", e);
+      setPhase({ kind: "error", message: isRejection(e) ? "You declined the signature. Nothing was paid." : errorMessage(e, "Payment failed") });
     }
   }
 

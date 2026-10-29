@@ -1,3 +1,5 @@
+import { errorMessage } from "./errors";
+
 const BASE = "/backend";
 const TOKEN_KEY = "factura.session";
 
@@ -42,7 +44,10 @@ export async function api<T>(path: string, init: RequestInit & { token?: string 
   if (init.body) headers.set("content-type", "application/json");
   if (init.token) headers.set("authorization", `Bearer ${init.token}`);
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new ApiError(body.error ?? `Request failed (${res.status})`, res.status);
+  const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+  if (!res.ok) {
+    const reason = body.error !== undefined ? errorMessage(body.error) : res.status >= 500 ? "Factura’s agent isn’t reachable right now" : `Request failed (${res.status})`;
+    throw new ApiError(reason, res.status);
+  }
   return body as T;
 }
