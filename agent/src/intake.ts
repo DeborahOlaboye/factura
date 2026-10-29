@@ -15,12 +15,16 @@ export const draftSchema = z.object({
   clientEmail: z.string().email().optional(),
   linkedinUrl: z.string().url().optional(),
   xHandle: z.string().optional(),
-  amountUsd: z.number().positive().max(1_000_000),
+  // Invoices are billed in whole cents of USA₮.
+  amountUsd: z.number().min(0.01, "amount must be at least $0.01").max(1_000_000, "amount must be at most $1,000,000"),
   description: z.string().min(1),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 export type InvoiceDraft = z.infer<typeof draftSchema>;
+
+/** What the model may return: an amount of 0 means "not stated", for the freelancer to fill in. */
+const parsedDraftSchema = draftSchema.extend({ amountUsd: z.number().min(0).max(1_000_000) });
 
 export async function draftFromText(text: string, services: Services, today = new Date()): Promise<InvoiceDraft> {
   const reply = await services.complete(
@@ -37,7 +41,7 @@ export async function draftFromText(text: string, services: Services, today = ne
     ],
     "invoice intake: parse request",
   );
-  const parsed = draftSchema.safeParse(stripNulls(parseJsonObject(reply)));
+  const parsed = parsedDraftSchema.safeParse(stripNulls(parseJsonObject(reply)));
   if (!parsed.success) {
     throw new Error(`could not read an invoice from that message: ${parsed.error.issues[0]?.message ?? "invalid"}`);
   }

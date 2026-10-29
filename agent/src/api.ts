@@ -179,7 +179,11 @@ export function buildApp(deps: {
   app.use("/api/admin", admin);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (err instanceof z.ZodError) return res.status(400).json({ error: "invalid request", issues: err.issues });
+    if (err instanceof z.ZodError) {
+      const first = err.issues[0];
+      const where = first?.path.length ? `${first.path.join(".")}: ` : "";
+      return res.status(400).json({ error: `${where}${first?.message ?? "invalid request"}`, issues: err.issues });
+    }
     if (err instanceof FacturaError) return res.status(err.status).json({ error: err.message });
     log("request failed", { error: String(err) });
     res.status(500).json({ error: "internal error" });

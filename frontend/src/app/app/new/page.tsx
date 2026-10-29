@@ -23,7 +23,8 @@ export default function NewInvoice() {
   const issue = useIssueInvoice();
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const valid = draft.clientName.trim() && draft.description.trim() && draft.amountUsd > 0 && draft.dueDate >= new Date().toISOString().slice(0, 10);
+  const tooSmall = draft.amountUsd > 0 && draft.amountUsd < 0.01;
+  const valid = draft.clientName.trim() && draft.description.trim() && draft.amountUsd >= 0.01 && draft.dueDate >= new Date().toISOString().slice(0, 10);
 
   const preview = useMemo(
     () => ({
@@ -96,7 +97,7 @@ export default function NewInvoice() {
               <Field label="Company">
                 <Input value={draft.company ?? ""} onChange={(e) => set("company", e.target.value)} placeholder="Northwind Labs, Inc." />
               </Field>
-              <Field label="Amount (USD)">
+              <Field label="Amount (USD)" error={tooSmall ? "The smallest invoice is $0.01: USA₮ is billed in cents." : undefined}>
                 <Input
                   required
                   inputMode="decimal"
