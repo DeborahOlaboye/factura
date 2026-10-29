@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { settlementFrom } from "../src/buy.ts";
+import { affordable, settlementFrom } from "../src/buy.ts";
 import { defaultAllocations } from "../src/factura.ts";
 import { shortfallBps } from "../src/fx.ts";
 import { invoiceId } from "../src/ledger.ts";
@@ -54,6 +54,30 @@ describe("validateAllocations", () => {
     for (const c of ["BR", "AR", "CO", "OTHER"] as const) {
       expect(validateAllocations(defaultAllocations(c))).toBeUndefined();
     }
+  });
+});
+
+describe("affordable", () => {
+  const USDC = "0xceba9300f2b948710d2653dd7b07f33a8b32118c";
+  const USDT = "0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e";
+  const offers = [
+    { asset: "0xcebA9300f2b948710d2653dD7B07f33A8B32118C", maxAmountRequired: "10000" }, // v1 shape, USDC listed first
+    { asset: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e", maxAmountRequired: "10000" },
+  ];
+
+  it("skips tokens the wallet can't cover", () => {
+    const balances = new Map([[USDC, 0n], [USDT, 110_000n]]);
+    expect(affordable(offers, balances).map((o) => o.asset.toLowerCase())).toEqual([USDT]);
+  });
+
+  it("reads v2 amounts too", () => {
+    const v2 = [{ asset: USDC, amount: "2000" }, { asset: USDT, amount: "2000" }];
+    expect(affordable(v2, new Map([[USDC, 5000n]])).map((o) => o.asset)).toEqual([USDC]);
+  });
+
+  it("passes everything through when nothing is affordable or balances are unknown", () => {
+    expect(affordable(offers, new Map())).toHaveLength(2);
+    expect(affordable(offers, undefined)).toHaveLength(2);
   });
 });
 

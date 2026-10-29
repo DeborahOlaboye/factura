@@ -16,7 +16,7 @@ const log = (msg: string, extra?: Record<string, unknown>) =>
 const clients = makeClients(cfg);
 const store = await Store.open({ dataDir: cfg.DATA_DIR, databaseUrl: cfg.DATABASE_URL });
 log("store ready", { backend: cfg.DATABASE_URL ? "postgres" : "file" });
-const buy = new Buy(store, { signer: clients.account, dailyBudgetUsd: cfg.BUY_DAILY_BUDGET_USD });
+const buy = new Buy(store, { signer: clients.account, reader: clients.publicClient, dailyBudgetUsd: cfg.BUY_DAILY_BUDGET_USD });
 const services = new Services(buy);
 const textile = new Textile(clients, cfg.TEXTILE_API_URL, cfg.TEXTILE_API_KEY);
 const ledger = cfg.LEDGER_ADDRESS ? new Ledger(clients, cfg.LEDGER_ADDRESS as `0x${string}`) : undefined;
