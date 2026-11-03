@@ -1,72 +1,89 @@
+<p align="center"><img src="frontend/public/brand/logo-light.png" alt="Factura" width="360"></p>
+
 # Factura
 
-Cross-border invoicing for LatAm freelancers billing US clients, settled in USA₮ over x402 on Celo.
+**Invoicing agent for freelancers who bill US clients.** The client pays in USA₮ over x402 on Celo: one signature, no gas, settled in seconds. The agent vets new clients, refuses sanctioned payers, and converts the proceeds into the currency the freelancer wants on Textile FX.
 
-Built for the Celo **Agents on Open Rails** hackathon. Primary track: **Open Corridors: USA₮ with x402**. It also uses wFIAT payouts (LatAm), Textile FX conversions and paid services through buy.
+Built for the Celo **Agents on Open Rails** hackathon. Primary track: **Open Corridors: USA₮ with x402**. Also entered in **Build with buy**.
+
+| | |
+|---|---|
+| Web app | https://factura-teal.vercel.app |
+| Agent | https://factura-agent.onrender.com (`/health`, `/agent.json`) |
+| Agent wallet (x402 PayTo) | [`0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68`](https://celoscan.io/address/0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68) |
+| ERC-8004 identity | agent **#10004** on the Celo IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| FacturaLedger | [`0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a`](https://celoscan.io/address/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a) |
+| ERC-8021 attribution code | `celo_5d8268ac8bc0`, on every transaction the agent sends |
 
 ## The problem
 
-Ana is a backend developer in São Paulo. Her clients are US startups. Today each invoice means:
+A freelancer outside the US who bills a US company today:
 
-- an international wire that takes 3–5 days and costs a fixed fee plus a bad FX spread;
-- no way to check whether a new client is real before she starts work;
-- chasing late payers by hand.
+- waits 3–5 business days for an international wire, and loses money on fees and on an exchange rate the bank doesn't show;
+- has no way to check a new client before starting work, which is how "new client, wants work started today" scams land;
+- chases late payers by hand.
 
 ## What Factura does
 
-1. **Issues the invoice.** Ana types "bill Acme $1,200 for October backend work, due the 15th". The agent drafts the invoice (Cencori LLM through buy), she confirms it, and it is recorded on the `FacturaLedger` contract.
-2. **Vets the client.** In the background the agent pays for:
-   - an OFAC name screen (Agent402);
-   - the client's LinkedIn company page and X profile;
-   - a two-line risk brief (Cencori).
-3. **Takes payment over x402.** The pay link `GET /pay/:invoiceId` answers `402` with the exact USA₮ amount. The client pays from any x402 client: a wallet, another agent, or `buy curl --token USAT`. Celo's hosted facilitator settles it. Before verification, the payer wallet is screened against the OFAC SDN list and refused if listed.
-4. **Converts and pays out.** In *managed* mode, the agent splits the USA₮ by Ana's rules (for example 50% USA₮, 50% wBRL):
-   - one Textile RFQ for USA₮ → USD₮;
-   - one RFQ per local leg for USD₮ → wBRL / wCOP;
-   - every result is forwarded through the ledger.
-
-   Each quote is checked against the market USD₮ rate first. A leg that can't be filled fairly is paid in dollars instead, and the reason is written on the invoice. In *direct* mode the client's USA₮ goes straight to Ana's wallet and the agent never touches it.
+1. **Drafts the invoice from one sentence.** "Bill Acme $1,200 for October backend work, due the 15th." Cencori (paid through buy) turns it into a draft; the freelancer reviews every field and issues it. The invoice is recorded on the FacturaLedger contract.
+2. **Vets the client.** The agent pays for an OFAC name screen (Agent402), the client's LinkedIn company page and X profile, and a two-line risk brief. Only an exact or full-name match against a sanctioned person or organisation blocks; partial overlaps are flagged for review.
+3. **Takes payment over x402.** The pay link (`/pay/:invoiceId`) answers `402 Payment Required` with the exact USA₮ amount. The client signs one EIP-3009 authorization from any wallet or any x402 client (`buy curl --token USAT …` works too). Before verification the payer's wallet is screened against the OFAC SDN list; a sanctioned wallet is refused before any money moves.
+4. **Pays out by the freelancer's rules.** By default the client pays the agent wallet, and the agent splits the proceeds as the freelancer chose: keep USA₮, convert to USD₮, or convert part to a local-currency stablecoin (wBRL, wCOP) on Textile FX, with every quote checked against the market rate. Each payout goes through the ledger, which can only pay the invoice's freelancer.
 5. **Chases late payers.** Overdue invoices get a reminder drafted every three days.
 
 ### Why USA₮
 
-The client is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by Anchorage Digital Bank. That makes it the stablecoin a US business can hold and pay with without offshore-issuer questions from its accountant. The freelancer receives dollars or local currency on her own terms.
+The payer is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by Anchorage Digital Bank: the stablecoin a US business can hold and pay with without offshore-issuer questions from its accountant. The freelancer receives dollars or local currency on their own terms.
+
+## Evidence for the judges
+
+| Criterion | Where to check |
+|---|---|
+| Real USA₮ settlement over x402 | Payments settle through Celo's facilitator (`api.x402.celo.org`) to the PayTo wallet above; each one is recorded on the ledger as `InvoicePaid` with the settlement tx |
+| ERC-8004 identity from the agent wallet | registration tx [`0x9d87f21b…4d4f`](https://celoscan.io/tx/0x9d87f21b1ab3a3346019f1d214dba26f34bcd16b763dc43f0b812e7756df4d4f); registration file at https://factura-agent.onrender.com/agent.json |
+| Attribution tag on every agent transaction | ledger deploy [`0x0399a590…4d74`](https://celoscan.io/tx/0x0399a590af504e84707755d3c464a8601e52886c6c933112b9cb163de0244d74), operator [`0xe7c5cc78…24f2`](https://celoscan.io/tx/0xe7c5cc781baf9067790b26890a77ed7460730cf1f72bd91cfbf556087cb924f2), registration, swaps and payouts all end in the `celo_5d8268ac8bc0` ERC-8021 suffix |
+| Paid calls into services we don't control (buy) | see the table below |
+
+### Paid services (Build with buy)
+
+| Service | Route | Price | Example settlement |
+|---|---|---|---|
+| Cencori LLM (via buy) | `gateway.usebuy.ai/cencori/v1/chat/completions` | $0.01 | [`0xf7ede2f9…d493`](https://celoscan.io/tx/0xf7ede2f959bea04180f1aebb2844bfbe7ed171a6af2b859a4790c61d2b7bd493), [`0x6ba3b25f…c6d3`](https://celoscan.io/tx/0x6ba3b25fafe9cdf416b0a1e199ed303003d6a765c515adc3c83df448e3a5c6d3), [`0x118fecae…e130`](https://celoscan.io/tx/0x118fecae154ad1510986bdb6009f15766fd23bfa9f02d955391433ab2f53e130) |
+| OFAC name screen (Agent402) | `agent402.tools/api/sanctions/name` | $0.005 | [`0xa4f3759a…5cd8`](https://celoscan.io/tx/0xa4f3759a67564ad16fc6ccf1e7cc6e2a418e676c07c2680edbe44dd7ebfa5cd8) |
+| OFAC wallet screen (Agent402) | `agent402.tools/api/sanctions/wallet` | $0.002 | on each payment |
+| LinkedIn company (Ploid, via buy) | `gateway.usebuy.ai/v1/social/linkedin/tools/ploid-linkedin-company` | $0.023 | when the client gives a company |
+| X profile (TikHub, via buy) | `gateway.usebuy.ai/v1/social/x/tools/tikhub-api-v1-twitter-web-fetch-user-profile` | $0.005 | when the client gives a handle |
+
+The agent pays these 402s itself with an x402 client signing from its wallet (x402 v1 for buy's gateway, v2 for Agent402), choosing a stablecoin it holds enough of. Every call has a hard price cap, the agent has a daily budget, and every payment is logged with its settlement tx: `GET /api/admin/paid-calls`.
+
+### Gas and relayers
+
+- **Client payments:** the client only signs an EIP-3009 authorization. Celo's x402 facilitator submits it and pays the gas. The PayTo is the agent wallet above.
+- **Paid service calls:** settled the same way by the service's facilitator; the agent wallet signs.
+- **Everything else** (ledger writes, payouts, Textile swaps, ERC-8004 registration) is sent and paid for by the agent wallet in CELO, and tagged.
 
 ## Architecture
 
 ```
 contracts/   Foundry. FacturaLedger: invoices, x402 settlements, conversions, payouts.
-agent/       TypeScript (Node 22). Express server, x402 resource server, buy client,
-             Textile RFQ client, treasury, vetting, SIWE sessions, ERC-8004 registration.
-frontend/    Next.js 16 + wagmi. Landing page, client pay page (x402 in the browser),
-             freelancer dashboard. Talks to the agent through a /backend rewrite.
+agent/       TypeScript (Node 22, Express). x402 resource server, x402 client for paid
+             services, Textile RFQ client, treasury, client vetting, SIWE sessions,
+             Postgres-backed store, ERC-8004 registration.
+frontend/    Next.js 16 + wagmi. Landing page, client pay page (x402 from the browser
+             wallet), freelancer dashboard.
 ```
 
-| Piece | What it uses |
+**What the ledger guarantees.** `FacturaLedger.payout(id, token, amount)` pulls from the agent and always sends to the invoice's `freelancer`. The agent chooses the token and amount; the contract fixes the destination. Conversions are logged with their swap tx (`Converted`), so the path from the client's USA₮ to the freelancer's payout is auditable onchain.
+
+| Piece | Implementation |
 |---|---|
-| Pay links | `@x402/express` + `@x402/evm` exact scheme, Celo facilitator `api.x402.celo.org`, USA₮ `0xD2ab…F771` |
-| Payer screen | `onBeforeVerify` hook → Agent402 `sanctions/wallet` via buy |
-| Settlement hook | `onAfterSettle` → `markPaid` on the ledger → managed payout |
-| FX | Textile RFQ v2 (`/rfq/request`, approve, swap, `/submit`, status). Celo corridors: USA₮↔USD₮, USD₮↔wBRL, USD₮↔wCOP |
-| Paid services | `@celo/buy` CLI (`buy curl --max-amount`), daily budget cap, every call logged with its settlement tx |
-| Attribution | Every agent tx goes through one viem wallet client extended with `withAttribution(ATTRIBUTION_CODE)` (ERC-8021) |
-| Identity | ERC-8004 IdentityRegistry `0x8004A169…a432`, registration file served at `/agent.json` |
-
-### What the ledger guarantees
-
-`FacturaLedger.payout(id, token, amount)` pulls from the agent and always sends to the invoice's `freelancer`. The agent chooses the token and amount. The contract fixes the destination. Conversions are logged with their swap tx (`Converted` event), so the whole path from the client's USA₮ to the freelancer's wBRL can be audited onchain.
-
-### Paid services (buy)
-
-| Service | Route | Cap per call |
-|---|---|---|
-| Cencori inference | `gateway.usebuy.ai/cencori/v1/chat/completions` | $0.01 |
-| LinkedIn company (Ploid) | `gateway.usebuy.ai/v1/social/linkedin/tools/ploid-linkedin-company` | $0.023 |
-| X user profile (TikHub) | `gateway.usebuy.ai/v1/social/x/tools/tikhub-api-v1-twitter-web-fetch-user-profile` | $0.005 |
-| OFAC name screen | `agent402.tools/api/sanctions/name` | $0.005 |
-| OFAC wallet screen | `agent402.tools/api/sanctions/wallet` | $0.002 |
-
-`GET /api/paid-calls` lists every call with its purpose, invoice and settlement tx. `buy receipts --account factura --resolve` gives the same from buy's side.
+| Pay links | `@x402/express` + `@x402/evm` exact scheme, USA₮ `0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771`, dynamic price and PayTo per invoice |
+| Payer screen | `onBeforeVerify` hook → Agent402 wallet screen |
+| Settlement | `onAfterSettle` → `markPaid` on the ledger → payout |
+| FX | Textile RFQ v2: request (EIP-712 TakerControl proof), approve, swap, submit, status |
+| Attribution | one viem wallet client extended with `withAttribution(ATTRIBUTION_CODE)` |
+| Freelancer sign-in | Sign-In with Ethereum (EIP-4361); the wallet that signs in is the wallet that gets paid |
+| Storage | in-memory store persisted to Postgres (`DATABASE_URL`) or a JSON file |
 
 ## Running it
 
@@ -76,70 +93,44 @@ cd contracts && forge build && forge test
 
 # agent
 cd ../agent && npm install
-cp .env.example .env            # fill in the key, attribution code, x402 key, API token
-npm run deploy:ledger           # deploys FacturaLedger (tagged), sets the agent as operator
-npm run register:agent          # ERC-8004 identity from the agent wallet
-npm run buy:import              # same wallet as the buy payer
+cp .env.example .env      # agent key, attribution code, x402 key, API token, SESSION_SECRET
+npm run deploy:ledger     # FacturaLedger from the agent wallet (tagged), agent set as operator
+npm run register:agent    # ERC-8004 identity from the agent wallet
 npm start
 
-# frontend
+# web app
 cd ../frontend && npm install
-cp .env.example .env.local      # FACTURA_AGENT_URL=http://localhost:8402
-npm run dev                     # http://localhost:3000
+cp .env.example .env.local   # FACTURA_AGENT_URL=http://localhost:8402
+npm run dev
 ```
-
-Freelancers sign in with their wallet (Sign-In with Ethereum, EIP-4361). The wallet that signs in is the wallet invoices pay out to. Clients need nothing but the pay link and a wallet holding USA₮ on Celo.
 
 Tests:
 
 ```sh
-npm test                                   # allocation maths, buy output parsing, vetting helpers
+cd contracts && forge test     # 15 ledger tests
+cd agent && npm test           # allocation maths, x402 receipts, token choice, vetting rules
 anvil --chain-id 42220 --port 18545 &
-npm run e2e                                # ledger + settlement hook + managed payout on a local chain
+npm run e2e                    # ledger + settlement hook + payout on a local chain
 ```
 
-The local run deploys the ledger and issues an invoice. It then feeds the settlement hook as if the facilitator had just settled the client's USA₮, and checks:
+### Deployment
 
-- the payout reaches the freelancer through the ledger;
-- the invoice is marked paid onchain with the right payer and settlement tx;
-- the ERC-8021 tag is on the agent's transactions.
+- **Agent:** Render (free plan) from `agent/Dockerfile`, described by `render.yaml`. State lives in Postgres via `DATABASE_URL`. `.github/workflows/keepalive.yml` pings `/health` every 10 minutes so the free instance doesn't sleep.
+- **Web app:** Vercel with root directory `frontend` and `FACTURA_AGENT_URL` set to the agent's URL. The production build fails if it's missing.
 
-Operator CLI (talks to `/api/admin`):
-
-```sh
-npm run invoice -- freelancer "Ana Souza" BR 0xHerWallet
-npm run invoice -- draft "bill Acme Inc \$1200 for October backend work, due Nov 15"
-npm run invoice -- create <freelancerId> '{"clientName":"Acme Inc","amountUsd":1200,"description":"October backend work","dueDate":"2026-11-15"}'
-```
-
-Paying an invoice from the command line:
-
-```sh
-npx @celo/buy curl --token USAT --max-amount 1200 https://<host>/pay/<invoiceId>
-```
-
-## REST API
+## API
 
 | Method | Path | Auth | |
 |---|---|---|---|
-| GET | `/auth/nonce` | — | SIWE nonce |
-| POST | `/auth/verify` | — | `{ message, signature }` → session token |
-| GET / POST | `/api/me` | session | the signed-in freelancer / create the profile |
-| PUT | `/api/me/payout-rules` | session | change mode and split |
-| POST | `/api/me/invoices/draft` | session | `{ text }` → structured draft (paid LLM call) |
-| GET / POST | `/api/me/invoices` | session | list / issue (returns `payLink` and `x402Url`) |
-| GET | `/api/me/invoices/:id` | session | one invoice with timeline data |
-| POST | `/api/me/invoices/:id/cancel` | session | cancel an open invoice |
-| POST | `/api/me/invoices/:id/vet` | session | re-run client vetting |
-| * | `/api/admin/*` | `API_TOKEN` | operator routes (freelancers, invoices, `paid-calls`) |
-| GET | `/pay/:id` | — | x402 pay link; a browser is redirected to the frontend pay page |
+| GET | `/pay/:id` | — | x402 pay link; a browser is redirected to the web app's pay page |
 | GET | `/invoices/:id` | — | public invoice view |
-| GET | `/agent.json` | — | ERC-8004 registration file |
+| GET | `/agent.json`, `/logo.png` | — | ERC-8004 registration file and image |
+| GET/POST | `/auth/nonce`, `/auth/verify` | — | Sign-In with Ethereum |
+| * | `/api/me/*` | session | profile, payout rules, invoices, drafting, cancel, re-run vetting |
+| * | `/api/admin/*` | `API_TOKEN` | operator routes, including `paid-calls` |
 
-Session tokens are HMAC-signed with `SESSION_SECRET` and last 7 days. `GET /api/admin/paid-calls` lists every buy call with its settlement tx.
+## Limits
 
-## Notes and limits
-
-- **Managed mode is custodial for the duration of one payout.** The client pays the agent's wallet, and the agent converts and forwards in the same flow. The ledger fixes where funds can go. Freelancers who don't want that use direct mode.
-- **Textile depth decides the default split.** USD₮→wARS depth on Celo is thin, so Argentine freelancers default to USA₮/USD₮. BRL is deep both ways.
-- **ERC-8021 tags:** x402 settlements are submitted by the facilitator and carry no tag yet. For those, the PayTo address is the attribution.
+- **Managed payouts hold the client's USA₮ for one payout.** The ledger fixes where it can go. Freelancers who prefer can switch to "straight to my wallet"; those payments go to their own wallet and aren't credited to Factura's PayTo.
+- **Textile's minimum is about $1 per conversion.** Smaller shares stay in USA₮.
+- **Amounts go down to $0.000001**, one unit of USA₮.
