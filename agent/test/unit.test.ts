@@ -5,7 +5,7 @@ import { shortfallBps } from "../src/fx.ts";
 import { invoiceId } from "../src/ledger.ts";
 import { effectiveRate } from "../src/textile.ts";
 import { planLegs, validateAllocations } from "../src/treasury.ts";
-import { hasSanctionMatch, parseJsonObject } from "../src/vetting.ts";
+import { hasSanctionMatch, nameScreen, parseJsonObject } from "../src/vetting.ts";
 
 const usd = (n: number) => BigInt(Math.round(n * 1e6));
 
@@ -105,6 +105,14 @@ describe("vetting helpers", () => {
     expect(hasSanctionMatch({ matches: [{ name: "GAZPROM" }] })).toBe(true);
     expect(hasSanctionMatch({ matches: [], verdict: "no_match" })).toBe(false);
     expect(hasSanctionMatch(undefined)).toBe(false);
+  });
+
+  it("only blocks exact name matches, not substring noise", () => {
+    // Real Agent402 answer for "Lexiq": contains "LEXI", a vessel.
+    expect(nameScreen({ verdict: "match", matches: [{ name: "LEXI", type: "vessel", matchType: "contains" }] }).kind).toBe("partial");
+    expect(nameScreen({ matches: [{ name: "GAZPROM", type: "entity", matchType: "exact" }] })).toEqual({ kind: "exact", entry: "GAZPROM (entity)" });
+    expect(nameScreen({ matches: [{ name: "PUTIN, Vladimir", type: "individual", matchType: "allTokens" }] }).kind).toBe("exact");
+    expect(nameScreen({ matches: [], verdict: "no_match" }).kind).toBe("none");
   });
 
   it("pulls a JSON object out of a chatty completion", () => {

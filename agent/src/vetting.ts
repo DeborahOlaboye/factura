@@ -40,11 +40,13 @@ export async function vetClient(client: ClientInfo, services: Services, invoiceI
     await attempt("x", PRICES.xProfile, () => services.xProfile(client.xHandle!, invoiceId));
   }
 
-  const sanctionHit = hasSanctionMatch(sanctions);
+  const screen = nameScreen(sanctions);
+  const sanctionHit = screen.kind === "exact";
   let verdict: VettingReport["verdict"] = sanctionHit ? "block" : "clear";
   let summary = sanctionHit
-    ? `${company} matches an entry on the OFAC SDN list. Do not take this engagement.`
+    ? `${company} matches ${screen.entry} on the OFAC SDN list. Do not take this engagement.`
     : "";
+  if (screen.kind === "partial") signals.ofacNote = `partial name overlap with SDN entry ${screen.entry}; not an identification`;
 
   if (!sanctionHit) {
     try {
@@ -80,6 +82,27 @@ export async function vetClient(client: ClientInfo, services: Services, invoiceI
   return { at: new Date().toISOString(), verdict, summary, signals, costUsd: Number(cost.toFixed(4)) };
 }
 
+interface NameMatch {
+  name?: string;
+  type?: string;
+  matchType?: string;
+}
+
+/**
+ * Read a name screen. Only an exact or every-word match against a person or organisation
+ * blocks; a substring overlap ("Lexiq" contains "LEXI", a ship) is noise that a freelancer
+ * should see, not a reason to refuse a client.
+ */
+export function nameScreen(result: unknown): { kind: "none" | "partial" | "exact"; entry?: string } {
+  if (!result || typeof result !== "object") return { kind: "none" };
+  const matches = ((result as { matches?: NameMatch[] }).matches ?? []).filter((m) => m && typeof m === "object");
+  const label = (m: NameMatch) => `${m.name ?? "an entry"}${m.type ? ` (${m.type})` : ""}`;
+  const strong = matches.find((m) => (m.matchType === "exact" || m.matchType === "allTokens") && m.type !== "vessel" && m.type !== "aircraft");
+  if (strong) return { kind: "exact", entry: label(strong) };
+  return matches.length ? { kind: "partial", entry: label(matches[0]!) } : { kind: "none" };
+}
+
+/** Wallet screens are exact address lookups: any match is a match. */
 export function hasSanctionMatch(result: unknown): boolean {
   if (!result || typeof result !== "object") return false;
   const r = result as { matches?: unknown[]; verdict?: string; count?: number };
