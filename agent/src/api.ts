@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import type { Auth, AuthedRequest } from "./auth.ts";
@@ -45,6 +46,9 @@ export function buildApp(deps: {
   const withLinks = (inv: Invoice) => ({ ...inv, payLink: factura.payLink(inv), x402Url: factura.x402Url(inv) });
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
+  // The image named in the ERC-8004 registration file.
+  const logo = fileURLToPath(new URL("../assets/logo.png", import.meta.url));
+  app.get("/logo.png", (_req, res) => res.set("cache-control", "public, max-age=86400").sendFile(logo));
   app.get(["/agent.json", "/.well-known/agent-registration.json"], (_req, res) =>
     res.json(registrationFile({ publicUrl: cfg.PUBLIC_URL, chainId, agentId: cfg.AGENT_ID })),
   );

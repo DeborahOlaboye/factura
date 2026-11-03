@@ -1,4 +1,4 @@
-# Factura agent. Runs anywhere Docker runs (Render, Railway, Fly.io, a VPS).
+# Factura agent. Runs anywhere Docker runs (Render, Fly.io, a VPS).
 # State lives in Postgres when DATABASE_URL is set; otherwise mount a persistent volume at /data.
 FROM node:22-slim
 WORKDIR /app
@@ -8,5 +8,6 @@ RUN npm ci --omit=dev --ignore-scripts
 COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
+COPY assets ./assets
 EXPOSE 8402
 CMD ["node", "--import", "tsx", "src/index.ts"]

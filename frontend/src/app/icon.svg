@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Factura</title>
+  <rect width="512" height="512" rx="112" fill="#1d5a45"/>
+  <!-- the invoice -->
+  <path d="M136 92h178l62 62v270a14 14 0 0 1-14 14H136a14 14 0 0 1-14-14V106a14 14 0 0 1 14-14z" fill="#000" opacity=".18" transform="translate(8 10)"/>
+  <path d="M136 92h178l62 62v270a14 14 0 0 1-14 14H136a14 14 0 0 1-14-14V106a14 14 0 0 1 14-14z" fill="#f6f1e3"/>
+  <path d="M314 92v48a14 14 0 0 0 14 14h48z" fill="#dcd3bd"/>
+  <rect x="162" y="140" width="96" height="16" rx="8" fill="#17160f"/>
+  <rect x="162" y="196" width="176" height="10" rx="5" fill="#8a8577"/>
+  <rect x="162" y="226" width="150" height="10" rx="5" fill="#8a8577"/>
+  <rect x="162" y="256" width="164" height="10" rx="5" fill="#8a8577"/>
+  <rect x="162" y="318" width="176" height="6" rx="3" fill="#17160f"/>
+  <rect x="250" y="346" width="88" height="22" rx="6" fill="#17160f"/>
+  <!-- the paid seal -->
+  <g transform="rotate(-12 196 368)">
+    <circle cx="196" cy="368" r="58" fill="#f6f1e3" stroke="#c4432b" stroke-width="10"/>
+    <circle cx="196" cy="368" r="43" fill="none" stroke="#c4432b" stroke-width="4"/>
+    <path d="M174 368l15 16 30-34" fill="none" stroke="#c4432b" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
