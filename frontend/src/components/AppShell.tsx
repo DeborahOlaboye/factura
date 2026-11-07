@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useConnection } from "wagmi";
 import { useSaveProfile } from "@/lib/hooks";
 import { useSession } from "@/lib/session";
@@ -84,6 +84,16 @@ function Gate({ children }: { children: ReactNode }) {
   const { isConnected, address } = useConnection();
   const { ready, session, freelancer, signIn, signingIn, error } = useSession();
 
+  // Ask for the signature as soon as a wallet connects, once per address: a declined
+  // request leaves the button to retry instead of reopening the wallet in a loop.
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!mounted || !ready || !isConnected || !address || session || signingIn) return;
+    if (asked.current === address) return;
+    asked.current = address;
+    void signIn();
+  }, [mounted, ready, isConnected, address, session, signingIn, signIn]);
+
   if (!mounted || !ready) return <PanelSkeleton />;
 
   if (!isConnected) {
@@ -103,10 +113,11 @@ function Gate({ children }: { children: ReactNode }) {
 
   if (!session) {
     return (
-      <Panel title="Sign in with your wallet" step="2 of 2">
+      <Panel title={signingIn ? "Approve the sign-in in your wallet" : "Sign in with your wallet"} step="2 of 2">
         <p>
-          Signing proves you own <span className="figures text-ink">{address?.slice(0, 6)}…{address?.slice(-4)}</span>. It&apos;s free and
-          moves no funds.
+          {signingIn && "Your wallet is asking you to sign a message. "}Signing proves you own{" "}
+          <span className="figures text-ink">{address?.slice(0, 6)}…{address?.slice(-4)}</span>. It&apos;s free, sends no transaction and
+          moves no funds, and it lasts 7 days in this browser.
         </p>
         {error && (
           <div className="mt-4">
@@ -114,7 +125,7 @@ function Gate({ children }: { children: ReactNode }) {
           </div>
         )}
         <Button size="lg" className="mt-6" busy={signingIn} onClick={signIn}>
-          {signingIn ? "Check your wallet" : "Sign in"}
+          {signingIn ? "Check your wallet" : error ? "Try again" : "Sign in"}
         </Button>
       </Panel>
     );
