@@ -48,6 +48,12 @@ const server = app.listen(cfg.PORT, () => {
 // Overdue reminders, hourly.
 setInterval(() => void factura.draftReminders(), 60 * 60 * 1000).unref();
 
+// Render's free plan sleeps after 15 idle minutes and wakes in about a minute. A request to
+// our own public URL goes through Render's edge, so it counts as traffic and keeps us up.
+if (process.env.RENDER) {
+  setInterval(() => void fetch(`${cfg.PUBLIC_URL}/health`, { signal: AbortSignal.timeout(30_000) }).catch(() => {}), 10 * 60 * 1000).unref();
+}
+
 // Hosts send SIGTERM before replacing the instance: finish the last store write first.
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.once(signal, () => {

@@ -25,7 +25,7 @@ A freelancer outside the US who bills a US company today:
 
 ## What Factura does
 
-1. **Drafts the invoice from one sentence.** "Bill Acme $1,200 for October backend work, due the 15th." Cencori (paid through buy) turns it into a draft; the freelancer reviews every field and issues it. The invoice is recorded on the FacturaLedger contract.
+1. **Drafts the invoice from one sentence.** "Bill Acme $1,200 for October backend work, due the 15th." An LLM (Agent402's nano chat tier, paid per call) turns it into a draft, with a plain local reading as the fallback if the model is down; the freelancer reviews every field and issues it. The invoice is recorded on the FacturaLedger contract.
 2. **Vets the client.** The agent pays for an OFAC name screen (Agent402), the client's LinkedIn company page and X profile, and a two-line risk brief. Only an exact or full-name match against a sanctioned person or organisation blocks; partial overlaps are flagged for review.
 3. **Takes payment over x402.** The pay link (`/pay/:invoiceId`) answers `402 Payment Required` with the exact USA₮ amount. The client signs one EIP-3009 authorization from any wallet or any x402 client (`buy curl --token USAT …` works too). Before verification the payer's wallet is screened against the OFAC SDN list; a sanctioned wallet is refused before any money moves.
 4. **Pays out by the freelancer's rules.** By default the client pays the agent wallet, and the agent splits the proceeds as the freelancer chose: keep USA₮, convert to USD₮, or convert part to a local-currency stablecoin (wBRL, wCOP) on Textile FX, with every quote checked against the market rate. Each payout goes through the ledger, which can only pay the invoice's freelancer.
@@ -48,7 +48,8 @@ The payer is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by A
 
 | Service | Route | Price | Example settlement |
 |---|---|---|---|
-| Cencori LLM (via buy) | `gateway.usebuy.ai/cencori/v1/chat/completions` | $0.01 | [`0xf7ede2f9…d493`](https://celoscan.io/tx/0xf7ede2f959bea04180f1aebb2844bfbe7ed171a6af2b859a4790c61d2b7bd493), [`0x6ba3b25f…c6d3`](https://celoscan.io/tx/0x6ba3b25fafe9cdf416b0a1e199ed303003d6a765c515adc3c83df448e3a5c6d3), [`0x118fecae…e130`](https://celoscan.io/tx/0x118fecae154ad1510986bdb6009f15766fd23bfa9f02d955391433ab2f53e130) |
+| LLM chat completions (Agent402 nano tier) | `agent402.tools/v1/nano/chat/completions` | $0.003 | [`0xab930744…af6b`](https://celoscan.io/tx/0xab930744a466a03a21c1f9ceefede6992ec1e8c3b8f24206cb88f00551acaf6b) |
+| Cencori LLM (via buy), until Cencori retired the only model buy serves | `gateway.usebuy.ai/cencori/v1/chat/completions` | $0.01 | [`0xf7ede2f9…d493`](https://celoscan.io/tx/0xf7ede2f959bea04180f1aebb2844bfbe7ed171a6af2b859a4790c61d2b7bd493), [`0x6ba3b25f…c6d3`](https://celoscan.io/tx/0x6ba3b25fafe9cdf416b0a1e199ed303003d6a765c515adc3c83df448e3a5c6d3), [`0x118fecae…e130`](https://celoscan.io/tx/0x118fecae154ad1510986bdb6009f15766fd23bfa9f02d955391433ab2f53e130) |
 | OFAC name screen (Agent402) | `agent402.tools/api/sanctions/name` | $0.005 | [`0xa4f3759a…5cd8`](https://celoscan.io/tx/0xa4f3759a67564ad16fc6ccf1e7cc6e2a418e676c07c2680edbe44dd7ebfa5cd8) |
 | OFAC wallet screen (Agent402) | `agent402.tools/api/sanctions/wallet` | $0.002 | on each payment |
 | LinkedIn company (Ploid, via buy) | `gateway.usebuy.ai/v1/social/linkedin/tools/ploid-linkedin-company` | $0.023 | when the client gives a company |
@@ -115,7 +116,7 @@ npm run e2e                    # ledger + settlement hook + payout on a local ch
 
 ### Deployment
 
-- **Agent:** Render (free plan) from `agent/Dockerfile`, described by `render.yaml`. State lives in Postgres via `DATABASE_URL`. `.github/workflows/keepalive.yml` pings `/health` every 10 minutes so the free instance doesn't sleep.
+- **Agent:** Render (free plan) from `agent/Dockerfile`, described by `render.yaml`. State lives in Postgres via `DATABASE_URL`. The agent pings its own public `/health` every 10 minutes so the free instance doesn't sleep; `.github/workflows/keepalive.yml` wakes it as a backup (GitHub runs it every few hours).
 - **Web app:** Vercel with root directory `frontend` and `FACTURA_AGENT_URL` set to the agent's URL. The production build fails if it's missing.
 
 ## API
