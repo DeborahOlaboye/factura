@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { affordable, settlementFrom } from "../src/buy.ts";
 import { defaultAllocations } from "../src/factura.ts";
 import { shortfallBps } from "../src/fx.ts";
+import { draftLocally } from "../src/intake.ts";
 import { invoiceId } from "../src/ledger.ts";
 import { effectiveRate } from "../src/textile.ts";
 import { planLegs, validateAllocations } from "../src/treasury.ts";
@@ -140,5 +141,34 @@ describe("invoiceId", () => {
   it("is deterministic per salt and distinct across deployments", () => {
     expect(invoiceId("FAC-0001", "a")).toBe(invoiceId("FAC-0001", "a"));
     expect(invoiceId("FAC-0001", "a")).not.toBe(invoiceId("FAC-0001", "b"));
+  });
+});
+
+describe("draftLocally", () => {
+  const today = new Date("2026-11-07T12:00:00Z");
+
+  it("reads what the request states plainly", () => {
+    expect(draftLocally("bill Acme $1,200 for October backend work, due the 15th, linkedin.com/company/acme", today)).toEqual({
+      clientName: "Acme",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      amountUsd: 1200,
+      description: "October backend work",
+      dueDate: "2026-11-15",
+    });
+  });
+
+  it("handles tiny amounts, emails, month names and relative dates", () => {
+    const d = draftLocally("Invoice Lexiq Labs 0.05 USD for logo design due Dec 3, email ap@lexiq.io", today);
+    expect(d).toMatchObject({ clientName: "Lexiq Labs", clientEmail: "ap@lexiq.io", amountUsd: 0.05, dueDate: "2026-12-03" });
+    expect(draftLocally("charge @bobdev 2.5k dollars for the audit in 30 days", today)).toMatchObject({
+      xHandle: "@bobdev",
+      amountUsd: 2500,
+      description: "the audit",
+      dueDate: "2026-12-07",
+    });
+  });
+
+  it("never guesses an amount and defaults the due date to 14 days", () => {
+    expect(draftLocally("bill northwind for consulting", today)).toMatchObject({ amountUsd: 0, dueDate: "2026-11-21" });
   });
 });

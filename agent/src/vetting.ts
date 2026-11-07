@@ -68,7 +68,7 @@ export async function vetClient(client: ClientInfo, services: Services, invoiceI
         "client vetting: risk brief",
         invoiceId,
       );
-      cost += PRICES.cencori;
+      cost += PRICES.llm;
       const parsed = parseJsonObject(brief) as { verdict?: string; summary?: string } | undefined;
       verdict = parsed?.verdict === "review" ? "review" : "clear";
       summary = parsed?.summary ?? brief.slice(0, 400);
@@ -121,7 +121,7 @@ export function parseJsonObject(text: string): unknown {
   }
 }
 
-/** Keep the LLM prompt under Cencori's 32 KiB body limit. */
+/** Keep the LLM prompt small: lookups can be large and only their gist matters. */
 function truncate(signals: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(signals)) {

@@ -9,7 +9,7 @@ const GATEWAY = "https://gateway.usebuy.ai";
 const AGENT402 = "https://agent402.tools";
 
 export const PRICES = {
-  cencori: 0.01,
+  llm: 0.003,
   linkedinCompany: 0.023,
   xProfile: 0.005,
   ofacName: 0.005,
@@ -24,18 +24,22 @@ export interface ChatMessage {
 export class Services {
   constructor(private readonly buy: Buy) {}
 
-  /** Cencori LLM inference, flat $0.01 per completion. */
+  /**
+   * LLM inference on Agent402's nano tier (OpenAI-compatible, its default model), flat
+   * $0.003 per completion in USDC. Cencori through the buy gateway served only
+   * maximo-atlas-1.3, which Cencori has retired.
+   */
   async complete(messages: ChatMessage[], purpose: string, invoiceId?: string): Promise<string> {
     const res = await this.buy.call<{ choices?: { message?: { content?: string } }[] }>({
-      service: "cencori/inference",
-      url: `${GATEWAY}/cencori/v1/chat/completions`,
-      body: { model: "maximo-atlas-1.3", max_tokens: 1024, temperature: 0.2, messages },
-      maxUsd: PRICES.cencori,
+      service: "agent402/chat-nano",
+      url: `${AGENT402}/v1/nano/chat/completions`,
+      body: { max_tokens: 1024, temperature: 0.2, messages },
+      maxUsd: PRICES.llm,
       purpose,
       invoiceId,
     });
     const content = res.data?.choices?.[0]?.message?.content;
-    if (!res.ok || !content) throw new Error(`cencori: ${res.error ?? "empty completion"}`);
+    if (!res.ok || !content) throw new Error(`llm: ${res.error ?? "empty completion"}`);
     return content;
   }
 
