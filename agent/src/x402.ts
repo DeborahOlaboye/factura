@@ -45,6 +45,23 @@ export function x402Payments(cfg: Config, store: Store, factura: Factura, log: L
     if (!screen.ok) return { abort: true as const, reason: "payer_refused", message: screen.reason };
   });
 
+  // A refused payment otherwise leaves no trace: the payer only sees a 402.
+  server.onAfterVerify(async (ctx) => {
+    if (ctx.result.isValid) return;
+    log("payment refused at verify", {
+      invoice: idFromTransport(ctx.transportContext),
+      payer: ctx.result.payer,
+      reason: ctx.result.invalidReason,
+      message: ctx.result.invalidMessage,
+    });
+  });
+  server.onVerifyFailure(async (ctx) => {
+    log("payment verify failed", { invoice: idFromTransport(ctx.transportContext), error: String(ctx.error).slice(0, 300) });
+  });
+  server.onSettleFailure(async (ctx) => {
+    log("payment settle failed", { invoice: idFromTransport(ctx.transportContext), error: String(ctx.error).slice(0, 300) });
+  });
+
   server.onAfterSettle(async (ctx) => {
     const id = idFromTransport(ctx.transportContext);
     if (!id || !ctx.result.success) return;

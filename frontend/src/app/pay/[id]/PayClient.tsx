@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { decodePaymentResponseHeader, wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm";
 import { useParams } from "next/navigation";
@@ -115,6 +116,9 @@ function PayStub({
       const res = await payFetch(`/backend/pay/${id}`, { headers: { accept: "application/json" } });
       setPhase({ kind: "settling" });
       if (!res.ok) {
+        const required = res.headers.get("PAYMENT-REQUIRED");
+        const reason = required ? safe(() => decodePaymentRequiredHeader(required).error) : undefined;
+        if (reason) throw new Error(refusal(reason));
         const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         throw new Error(errorMessage(body, `Payment was not accepted (HTTP ${res.status})`));
       }
@@ -225,4 +229,22 @@ function AgentPay({ url, amount }: { url: string; amount: number }) {
       </div>
     </details>
   );
+}
+
+function safe<T>(f: () => T): T | undefined {
+  try {
+    return f();
+  } catch {
+    return undefined;
+  }
+}
+
+/** The facilitator's reason codes, in words a payer can act on. */
+function refusal(reason: string): string {
+  if (/signature/i.test(reason))
+    return "Your wallet's signature wasn't accepted. Smart-account wallets (EIP-7702, e.g. Rabby or MetaMask with smart account on) can't sign this payment yet: switch the smart account off or pay from a regular account.";
+  if (/insufficient|balance/i.test(reason)) return "This wallet doesn't hold enough USA₮ on Celo for this invoice.";
+  if (/expired|valid_before|validBefore|valid_after/i.test(reason)) return "The signature expired before it reached Celo. Try again and confirm in your wallet straight away.";
+  if (/payer_refused/i.test(reason)) return "This wallet can't pay this invoice.";
+  return `Payment was not accepted: ${reason.replace(/_/g, " ")}`;
 }
