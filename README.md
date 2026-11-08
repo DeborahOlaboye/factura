@@ -9,6 +9,7 @@ Built for the Celo **Agents on Open Rails** hackathon. Primary track: **Open Cor
 | | |
 |---|---|
 | Web app | https://factura-teal.vercel.app |
+| Demo video | https://youtu.be/z3wsOswJxQk |
 | Agent | https://factura-agent.onrender.com (`/health`, `/agent.json`) |
 | Agent wallet (x402 PayTo) | [`0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68`](https://celoscan.io/address/0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68) |
 | ERC-8004 identity | agent **#10004** on the Celo IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
