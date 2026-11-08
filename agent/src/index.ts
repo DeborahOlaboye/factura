@@ -9,7 +9,16 @@ import { Services } from "./services.ts";
 import { Store } from "./store.ts";
 import { Textile } from "./textile.ts";
 
-const cfg = loadConfig();
+const cfg = (() => {
+  try {
+    return loadConfig();
+  } catch (err) {
+    // Missing keys are the usual first run: say what's missing, not a stack trace.
+    console.error(`factura: ${err instanceof Error ? err.message : String(err)}`);
+    console.error("Copy .env.example to .env and fill it in. The live agent runs at https://factura-agent.onrender.com");
+    process.exit(1);
+  }
+})();
 const log = (msg: string, extra?: Record<string, unknown>) =>
   console.log(JSON.stringify({ at: new Date().toISOString(), msg, ...extra }));
 
