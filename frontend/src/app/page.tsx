@@ -69,6 +69,7 @@ export default function Home() {
           <div className="relative rise [animation-delay:120ms]">
             <div aria-hidden className="absolute -inset-x-4 top-6 bottom-0 -rotate-2 rounded bg-rule/60" />
             <div className="relative">
+              <p className="mb-2 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Example invoice</p>
               <InvoiceSheet
                 data={{
                   number: "FAC-0042",
