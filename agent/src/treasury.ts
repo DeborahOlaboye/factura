@@ -5,8 +5,14 @@ import type { Allocation, Conversion, Invoice, Payout, Store } from "./store.ts"
 import { effectiveRate, TextileError, type Textile } from "./textile.ts";
 import { TOKENS, type Symbol } from "./tokens.ts";
 
-/** Textile's corridor floor is about $1 of notional; smaller legs fold into USA₮. */
-const MIN_LEG_USD = 1_000_000n; // 1.00 in 6-decimal dollars
+/**
+ * Textile's RFQ minimum is 1.00 of the sell token. A local-currency leg sells twice
+ * (USA₮ → USD₮ → wFIAT) and the first hop's fee lands it just under 1.00, so it needs
+ * headroom; a USD₮ leg sells once. Smaller legs fold into USA₮.
+ */
+export function minLegUsat(symbol: Symbol): bigint {
+  return symbol === "USDT" ? 1_000_000n : 1_010_000n;
+}
 
 export interface Leg {
   symbol: Symbol;
@@ -24,7 +30,7 @@ export function planLegs(amount: bigint, allocations: Allocation[]): Leg[] {
   for (const a of allocations) {
     if (a.bps <= 0) continue;
     const share = (amount * BigInt(a.bps)) / 10_000n;
-    if (a.symbol !== "USAT" && share < MIN_LEG_USD) continue;
+    if (a.symbol !== "USAT" && share < minLegUsat(a.symbol)) continue;
     legs.set(a.symbol, (legs.get(a.symbol) ?? 0n) + share);
     assigned += share;
   }
@@ -74,6 +80,14 @@ export async function settleManaged(invoice: Invoice, allocations: Allocation[],
       c.txHash as Hex,
     );
   };
+
+  // Say why a chosen currency didn't arrive: shares under Textile's floor were kept in USA₮.
+  for (const a of allocations) {
+    if (a.symbol === "USAT" || a.bps <= 0 || legs.some((l) => l.symbol === a.symbol)) continue;
+    const share = (BigInt(invoice.amount) * BigInt(a.bps)) / 10_000n;
+    const min = (Number(minLegUsat(a.symbol)) / 1e6).toFixed(2);
+    note(`${a.symbol} share of $${(Number(share) / 1e6).toFixed(2)} is below the $${min} Textile needs to convert it, so it was paid in USA₮.`);
+  }
 
   // Step 1: one USA₮ → USD₮ swap covering every leg that needs dollars-on-Textile.
   const usatLeg = legs.find((l) => l.symbol === "USAT")?.usat ?? 0n;

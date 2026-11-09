@@ -65,7 +65,8 @@ function SettingsForm({ freelancer }: { freelancer: Freelancer }) {
             <SplitEditor country={freelancer.country} split={split} onChange={setSplit} />
             <p className="mt-5 text-[13px] leading-relaxed text-ink-3">
               Each conversion is quoted on Textile FX and checked against the market rate first. If a quote is more than 1.5% off, that share
-              is paid in dollars instead and the invoice says why.
+              is paid in dollars instead and the invoice says why. Textile converts at least $1.00 at a time ($1.01 for reais and pesos,
+              which convert in two steps), so on small invoices a smaller share stays in USA₮.
             </p>
           </section>
         )}

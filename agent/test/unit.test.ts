@@ -39,6 +39,12 @@ describe("planLegs", () => {
     ]);
     expect(legs).toEqual([{ symbol: "USAT", usat: usd(10) }]);
   });
+
+  it("leaves headroom for the first hop's fee on local-currency legs", () => {
+    expect(planLegs(usd(1), [{ symbol: "wARS", bps: 10_000 }])).toEqual([{ symbol: "USAT", usat: usd(1) }]);
+    expect(planLegs(usd(1.01), [{ symbol: "wARS", bps: 10_000 }])).toEqual([{ symbol: "wARS", usat: usd(1.01) }]);
+    expect(planLegs(usd(1), [{ symbol: "USDT", bps: 10_000 }])).toEqual([{ symbol: "USDT", usat: usd(1) }]);
+  });
 });
 
 describe("validateAllocations", () => {
