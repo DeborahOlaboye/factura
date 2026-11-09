@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /app
+
+# Machine-readable surfaces: /llms.txt here, and https://factura-agent.onrender.com/agent.json

@@ -1,0 +1,23 @@
+# Factura
+
+> Invoicing for freelancers in Brazil, Argentina and Colombia who bill US clients. The client pays in USA₮ on Celo with one EIP-3009 signature over x402; Factura's agent records the payment on the FacturaLedger contract and pays the freelancer out in USA₮, USD₮, wBRL or wCOP by their own rules.
+
+## For agents and scripts
+
+- Invoice as JSON (public): https://factura-agent.onrender.com/invoices/{invoiceId}
+  Fields: number, from, to, description, amount (USD), settlementAsset (USA₮, chainId 42220, 6 decimals), dueDate, status, payTo, payToIsFreelancer, metaHash.
+- Pay an invoice (x402 v2, scheme exact, network eip155:42220): GET https://factura-agent.onrender.com/pay/{invoiceId} with Accept: application/json. The 402 response's PAYMENT-REQUIRED header gives asset, amount and payTo; retry with a PAYMENT-SIGNATURE header. Example: npx @celo/buy curl --token USAT https://factura-agent.onrender.com/pay/{invoiceId}
+- {invoiceId} is the bytes32 id in a pay link: https://factura-teal.vercel.app/pay/{invoiceId}
+- ERC-8004 registration file: https://factura-agent.onrender.com/agent.json
+
+## Onchain (Celo mainnet, chain 42220)
+
+- FacturaLedger, verified source: https://celoscan.io/address/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a#code (also an exact match on Sourcify: https://repo.sourcify.dev/42220/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a)
+- Agent wallet (x402 PayTo, ledger operator): https://celoscan.io/address/0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68
+- ERC-8004 identity, agent 10004: https://erc-8004.quicknode.com/agents/celo-mainnet/10004
+- USA₮ token: https://celoscan.io/token/0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771
+- Every agent transaction ends in the ERC-8021 attribution suffix for celo_5d8268ac8bc0 (see the input data of any agent tx).
+
+## Source
+
+- https://github.com/DeborahOlaboye/factura (contracts/, agent/, frontend/)
