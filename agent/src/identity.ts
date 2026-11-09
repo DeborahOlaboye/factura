@@ -6,7 +6,7 @@ export const IDENTITY_REGISTRY: Record<number, Address> = {
 };
 
 /** ERC-8004 registration file, served at /agent.json and used as the agentURI. */
-export function registrationFile(opts: { publicUrl: string; chainId: number; agentId?: bigint }) {
+export function registrationFile(opts: { publicUrl: string; chainId: number; agentId?: bigint; agentAddress: Address }) {
   return {
     type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
     name: "Factura",
@@ -18,6 +18,8 @@ export function registrationFile(opts: { publicUrl: string; chainId: number; age
     services: [
       { name: "web", endpoint: opts.publicUrl },
       { name: "x402-pay-links", endpoint: `${opts.publicUrl}/pay/{invoiceId}` },
+      { name: "invoice", endpoint: `${opts.publicUrl}/invoices/{invoiceId}` },
+      { name: "agentWallet", endpoint: `eip155:${opts.chainId}:${opts.agentAddress}` },
     ],
     x402Support: true,
     active: true,

@@ -50,7 +50,7 @@ export function buildApp(deps: {
   const logo = fileURLToPath(new URL("../assets/logo.png", import.meta.url));
   app.get("/logo.png", (_req, res) => res.set("cache-control", "public, max-age=86400").sendFile(logo));
   app.get(["/agent.json", "/.well-known/agent-registration.json"], (_req, res) =>
-    res.json(registrationFile({ publicUrl: cfg.PUBLIC_URL, chainId, agentId: cfg.AGENT_ID })),
+    res.json(registrationFile({ publicUrl: cfg.PUBLIC_URL, chainId, agentId: cfg.AGENT_ID, agentAddress: factura.agentAddress })),
   );
 
   // ---- public pay links (x402) ----

@@ -38,6 +38,10 @@ export class FacturaError extends Error {
 export class Factura {
   constructor(private readonly d: Deps) {}
 
+  get agentAddress(): Address {
+    return this.d.agentAddress;
+  }
+
   registerFreelancer(input: {
     name: string;
     email?: string;
