@@ -41,6 +41,7 @@ The payer is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by A
 | Criterion | Where to check |
 |---|---|
 | Real USA₮ settlement over x402 | Payments settle through Celo's facilitator (`api.x402.celo.org`) to the PayTo wallet above; each one is recorded on the ledger as `InvoicePaid` with the settlement tx. Example, invoice FAC-0006: client's USA₮ settlement [`0x1584f640…8505`](https://celoscan.io/tx/0x1584f640eb1faee6f90796ec02eaf9e24e3712b8731ae590a0cc5aba763e8505) → `InvoicePaid` [`0xf4203cb2…eb70`](https://celoscan.io/tx/0xf4203cb21700be5cdd38a0223b61df18d8b7d2ea7997caf56e401de9611eeb70) → payout to the freelancer `PayoutSent` [`0x5a28ca11…b073`](https://celoscan.io/tx/0x5a28ca11d3fa99a1072468743faf26192e34a0b98e09a390006da3c64a10b073) |
+| Textile FX conversion on mainnet | Invoice FAC-0011 ($1.00, freelancer in Argentina): client's USA₮ settlement [`0xa219021e…3ebf`](https://celoscan.io/tx/0xa219021ea89f1e42c49b636a6045a99bf795b9fcb49060e0dbe10c6bc36f3ebf) → Textile swap 1.00 USA₮ → 0.99975 USD₮ [`0x596537ac…8acb`](https://celoscan.io/tx/0x596537ac9494bd87a9d51494cb9a3ab2d00f0de50361fd7c6896531b59f78acb) → `Converted` on the ledger [`0x744d451e…07e8`](https://celoscan.io/tx/0x744d451ec6f2baf43045d0d3eee62eec020730982b913ae5915bb523679d07e8) → payout [`0x0c59ee5b…4d97`](https://celoscan.io/tx/0x0c59ee5bd01eedb11e1b1d9131c2e518e3e935e8f1a2fc1841bc53202b934d97). The wARS hop was below Textile's 1.00 RFQ minimum after the first hop's fee, so it fell back to USD₮ and the invoice says why; local-currency legs now need $1.01. |
 | ERC-8004 identity from the agent wallet | registration tx [`0x9d87f21b…4d4f`](https://celoscan.io/tx/0x9d87f21b1ab3a3346019f1d214dba26f34bcd16b763dc43f0b812e7756df4d4f); registration file at https://factura-agent.onrender.com/agent.json |
 | Attribution tag on every agent transaction | ledger deploy [`0x0399a590…4d74`](https://celoscan.io/tx/0x0399a590af504e84707755d3c464a8601e52886c6c933112b9cb163de0244d74), operator [`0xe7c5cc78…24f2`](https://celoscan.io/tx/0xe7c5cc781baf9067790b26890a77ed7460730cf1f72bd91cfbf556087cb924f2), registration, swaps and payouts all end in the `celo_5d8268ac8bc0` ERC-8021 suffix |
 | Paid calls into services we don't control (buy) | see the table below |
@@ -143,5 +144,5 @@ npm run e2e                    # ledger + settlement hook + payout on a local ch
 ## Limits
 
 - **Managed payouts hold the client's USA₮ for one payout.** The ledger fixes where it can go. Freelancers who prefer can switch to "straight to my wallet"; those payments go to their own wallet and aren't credited to Factura's PayTo.
-- **Textile's minimum is about $1 per conversion.** Smaller shares stay in USA₮.
+- **Textile's minimum is 1.00 of the sell token per conversion.** A USD₮ share needs $1.00, a wBRL/wARS/wCOP share $1.01 (it converts twice). Smaller shares stay in USA₮, with a note on the invoice.
 - **Amounts go down to $0.000001**, one unit of USA₮.
