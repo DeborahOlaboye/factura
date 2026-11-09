@@ -62,6 +62,8 @@ export interface PublicInvoice {
   status: Invoice["status"];
   payment?: Invoice["payment"];
   metaHash: string;
+  payTo?: string;
+  payToIsFreelancer?: boolean;
   x402Url: string;
 }
 

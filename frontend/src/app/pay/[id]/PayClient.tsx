@@ -58,7 +58,7 @@ export function PayClient() {
           ) : paid ? (
             <Receipt tx={settlementTx} paidAt={data.payment?.paidAt} payer={data.payment?.payer} amount={amount} />
           ) : (
-            <PayStub id={id} amount={amount} x402Url={data.x402Url} phase={phase} setPhase={setPhase} onPaid={() => inv.refetch()} />
+            <PayStub id={id} amount={amount} inv={data} x402Url={data.x402Url} phase={phase} setPhase={setPhase} onPaid={() => inv.refetch()} />
           )
         }
       />
@@ -73,9 +73,11 @@ function PayStub({
   phase,
   setPhase,
   onPaid,
+  inv,
 }: {
   id: string;
   amount: number;
+  inv: Pick<PublicInvoice, "payTo" | "payToIsFreelancer">;
   x402Url: string;
   phase: Phase;
   setPhase: (p: Phase) => void;
@@ -145,6 +147,16 @@ function PayStub({
           <p className="figures text-sm text-ink-2">Balance {usdNumber(balanceUsd)}</p>
         )}
       </div>
+
+      {inv.payTo && (
+        <p className="text-[13px] leading-relaxed text-ink-3">
+          {inv.payToIsFreelancer ? "Paid straight to the freelancer's wallet " : "Paid to Factura's agent wallet "}
+          <a href={`https://celoscan.io/address/${inv.payTo}`} target="_blank" rel="noreferrer" className="figures underline underline-offset-2">
+            {inv.payTo.slice(0, 6)}…{inv.payTo.slice(-4)}
+          </a>
+          {inv.payToIsFreelancer ? "." : ", which records the payment on the FacturaLedger contract and pays the freelancer out by their own rules."}
+        </p>
+      )}
 
       {phase.kind === "error" && <Notice tone="danger">{phase.message}</Notice>}
       {mounted && short && !wrongChain && (

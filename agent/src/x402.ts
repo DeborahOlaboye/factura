@@ -141,5 +141,8 @@ export function publicInvoice(inv: ReturnType<Store["invoice"]> & {}, store: Sto
     status: inv.status,
     payment: inv.payment,
     metaHash: inv.metaHash,
+    // Managed payouts are paid to the agent, which forwards per the freelancer's rules.
+    payTo: inv.payTo,
+    payToIsFreelancer: !!f && inv.payTo.toLowerCase() === f.wallet.toLowerCase(),
   };
 }
