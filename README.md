@@ -12,8 +12,8 @@ Built for the Celo **Agents on Open Rails** hackathon. Primary track: **Open Cor
 | Demo video | https://youtu.be/z3wsOswJxQk |
 | Agent | https://factura-agent.onrender.com (`/health`, `/agent.json`) |
 | Agent wallet (x402 PayTo) | [`0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68`](https://celoscan.io/address/0xa3C1bDd50A36BbC008a9B49034C93dA6DC3b9e68) |
-| ERC-8004 identity | agent **#10004** on the Celo IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
-| FacturaLedger | [`0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a`](https://celoscan.io/address/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a) |
+| ERC-8004 identity | agent [**#10004**](https://erc-8004.quicknode.com/agents/celo-mainnet/10004) on the Celo IdentityRegistry [`0x8004A169…a432`](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
+| FacturaLedger | [`0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a`](https://celoscan.io/address/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a#code): source verified on Celoscan and an exact match on [Sourcify](https://repo.sourcify.dev/42220/0xb0ecc1e95455598d5bace76e3d4e0c0aa565835a) |
 | ERC-8021 attribution code | `celo_5d8268ac8bc0`, on every transaction the agent sends |
 
 ## The problem
@@ -40,7 +40,7 @@ The payer is a US company. USA₮ is the GENIUS-Act-compliant dollar issued by A
 
 | Criterion | Where to check |
 |---|---|
-| Real USA₮ settlement over x402 | Payments settle through Celo's facilitator (`api.x402.celo.org`) to the PayTo wallet above; each one is recorded on the ledger as `InvoicePaid` with the settlement tx |
+| Real USA₮ settlement over x402 | Payments settle through Celo's facilitator (`api.x402.celo.org`) to the PayTo wallet above; each one is recorded on the ledger as `InvoicePaid` with the settlement tx. Example, invoice FAC-0006: client's USA₮ settlement [`0x1584f640…8505`](https://celoscan.io/tx/0x1584f640eb1faee6f90796ec02eaf9e24e3712b8731ae590a0cc5aba763e8505) → `InvoicePaid` [`0xf4203cb2…eb70`](https://celoscan.io/tx/0xf4203cb21700be5cdd38a0223b61df18d8b7d2ea7997caf56e401de9611eeb70) → payout to the freelancer `PayoutSent` [`0x5a28ca11…b073`](https://celoscan.io/tx/0x5a28ca11d3fa99a1072468743faf26192e34a0b98e09a390006da3c64a10b073) |
 | ERC-8004 identity from the agent wallet | registration tx [`0x9d87f21b…4d4f`](https://celoscan.io/tx/0x9d87f21b1ab3a3346019f1d214dba26f34bcd16b763dc43f0b812e7756df4d4f); registration file at https://factura-agent.onrender.com/agent.json |
 | Attribution tag on every agent transaction | ledger deploy [`0x0399a590…4d74`](https://celoscan.io/tx/0x0399a590af504e84707755d3c464a8601e52886c6c933112b9cb163de0244d74), operator [`0xe7c5cc78…24f2`](https://celoscan.io/tx/0xe7c5cc781baf9067790b26890a77ed7460730cf1f72bd91cfbf556087cb924f2), registration, swaps and payouts all end in the `celo_5d8268ac8bc0` ERC-8021 suffix |
 | Paid calls into services we don't control (buy) | see the table below |
@@ -89,6 +89,8 @@ frontend/    Next.js 16 + wagmi. Landing page, client pay page (x402 from the br
 
 ## Running it
 
+You need Node.js 22.13 or later and [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, and `anvil` for the end-to-end test). Without keys you can build, run every test and start the web app; the agent itself needs a funded Celo key and an x402 facilitator key to start.
+
 ```sh
 # contracts
 cd contracts && forge build && forge test
@@ -130,6 +132,13 @@ npm run e2e                    # ledger + settlement hook + payout on a local ch
 | GET/POST | `/auth/nonce`, `/auth/verify` | — | Sign-In with Ethereum |
 | * | `/api/me/*` | session | profile, payout rules, invoices, drafting, cancel, re-run vetting |
 | * | `/api/admin/*` | `API_TOKEN` | operator routes, including `paid-calls` |
+
+## What the contract enforces, and what it trusts
+
+- **Enforced:** a payout can only go to the invoice's freelancer, and only once the invoice is marked paid (`paidOut` records every token sent); only the freelancer or an operator can create or cancel an open invoice for that freelancer; only an operator can mark it paid or record a conversion. The ledger holds no funds: `payout` pulls from the operator's own balance.
+- **Attested:** `markPaid` is called by the operator after the facilitator settles; the contract can't see the x402 settlement itself. Each `InvoicePaid` carries the settlement tx hash, so anyone can check the matching USA₮ transfer to the PayTo wallet.
+- **Self-issued invoices are allowed:** a freelancer can record their own invoice on the ledger without Factura. The agent only acts on invoices it issued.
+- **Operator key:** the agent wallet signs every agent transaction, is the x402 PayTo and is the ledger's owner and operator. The owner role (who can add operators) is `Ownable2Step`, so it can move to a separate wallet without redeploying.
 
 ## Limits
 
