@@ -22,7 +22,20 @@ const STEPS = [
   {
     n: "04",
     title: "You choose the currency",
-    body: "Keep dollars, or have part converted to reais or pesos on Textile FX, checked against the market rate. Every step is on-chain.",
+    body: (
+      <>
+        Keep dollars in USA₮ or USD₮, or have part converted on{" "}
+        <a href="https://app.textilecredit.com" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">
+          Textile FX
+        </a>
+        , a stablecoin FX market on Celo, into Ripio&apos;s{" "}
+        <a href="https://www.ripio.com/en/wfiat" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">
+          wBRL or wCOP
+        </a>
+        : digital reais and pesos backed 1:1 by the local currency and redeemable through Ripio. Every quote is checked against the
+        market rate, and every step is on-chain.
+      </>
+    ),
   },
 ];
 
@@ -162,7 +175,16 @@ export default function Home() {
               <h2 className="mt-4 font-display text-4xl tracking-tight sm:text-5xl">Paying an invoice from Factura</h2>
               <p className="mt-5 max-w-[32rem] text-[15px] leading-relaxed text-inverse-ink/75">
                 Open the link you were sent, connect a wallet holding USA₮ on Celo and approve one signature. You don&apos;t pay gas.
-                USA₮ is issued by Anchorage Digital Bank under the GENIUS Act: a dollar your finance team can hold and account for.
+                USA₮ is Tether&apos;s US dollar stablecoin,{" "}
+                <a
+                  href="https://docs.celo.org/build-on-celo/build-with-usat"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-inverse-ink"
+                >
+                  issued by Anchorage Digital Bank
+                </a>{" "}
+                and designed to meet GENIUS Act standards: a dollar your finance team can hold and account for.
               </p>
             </div>
             <div className="rounded-md border border-inverse-ink/15 bg-inverse-ink/5 p-6">
